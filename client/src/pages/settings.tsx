@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiZendesk, SiHubspot } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiZendesk, SiHubspot, SiSalesforce } from "react-icons/si";
 import { Platform, User } from "@shared/schema";
 import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
 import FacebookConnectButton from "@/components/shared/platforms/FacebookConnectButton";
