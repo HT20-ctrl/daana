@@ -169,12 +169,18 @@ export default function Sidebar({ user }: SidebarProps) {
                         // If connected, go to settings page
                         window.location.href = "/settings?tab=platforms";
                       } else {
-                        // For Facebook, directly connect without delay
+                        // For all platforms, go to settings with platform tab open first
+                        window.location.href = `/settings?tab=platforms&connect=${platform.name}`;
+                        
+                        // For Facebook, we'll handle the connection from the settings page
                         if (platform.name === "facebook") {
-                          window.location.href = "/api/platforms/facebook/connect";
-                        } else {
-                          // For other platforms, go to settings with platform tab open
-                          window.location.href = `/settings?tab=platforms`;
+                          // Adding a short timeout to ensure the settings page loads first
+                          setTimeout(() => {
+                            const connectButton = document.querySelector(`#connect-facebook-button button`);
+                            if (connectButton && connectButton instanceof HTMLElement) {
+                              connectButton.click();
+                            }
+                          }, 800);
                         }
                       }
                     }}

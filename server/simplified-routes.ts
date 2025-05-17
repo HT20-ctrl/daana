@@ -198,38 +198,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Using demo Facebook connection");
       
-      // Check if user already has Facebook connected
+      // Clean up any existing Facebook platforms first
       const userId = "1"; // Demo user ID
       const existingPlatforms = await storage.getPlatformsByUserId(userId);
-      const existingFacebookPlatform = existingPlatforms.find(p => 
-        p.name === "facebook" && p.isConnected === true
-      );
       
-      if (existingFacebookPlatform) {
-        console.log("Facebook already connected, refreshing connection");
-        // If already connected, refresh the token
-        await storage.createPlatform({
-          userId,
-          name: "facebook",
-          displayName: "Facebook (Demo User)",
-          accessToken: "mock-access-token-refreshed",
-          refreshToken: null,
-          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          isConnected: true
-        });
-      } else {
-        console.log("Creating new Facebook connection");
-        // Otherwise, create a new connection
-        await storage.createPlatform({
-          userId,
-          name: "facebook",
-          displayName: "Facebook (Demo User)",
-          accessToken: "mock-access-token",
-          refreshToken: null,
-          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          isConnected: true
-        });
+      // Find and clean up all existing Facebook platforms
+      for (const platform of existingPlatforms) {
+        if (platform.name === "facebook") {
+          console.log(`Cleaning up existing Facebook platform ID: ${platform.id}`);
+          // Update platform to disconnected status
+          await storage.createPlatform({
+            ...platform,
+            isConnected: false,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null
+          });
+        }
       }
+      
+      // Create a fresh Facebook connection
+      console.log("Creating new Facebook connection");
+      await storage.createPlatform({
+        userId,
+        name: "facebook",
+        displayName: "Facebook (Demo User)",
+        accessToken: "mock-access-token",
+        refreshToken: null,
+        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isConnected: true
+      });
       
       // Redirect back to the settings page with a success parameter
       return res.redirect('/settings?fb_connected=true');

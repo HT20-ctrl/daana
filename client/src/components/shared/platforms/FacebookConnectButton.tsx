@@ -74,8 +74,14 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
   useEffect(() => {
     const checkFacebookConfig = async () => {
       try {
-        const response = await apiRequest("GET", "/api/platforms/facebook/status");
-        setIsConfigured(response.configured);
+        const response = await fetch("/api/platforms/facebook/status");
+        if (response.ok) {
+          const data = await response.json();
+          setIsConfigured(!!data.configured);
+        } else {
+          console.error("Error checking Facebook configuration: status", response.status);
+          setIsConfigured(false);
+        }
       } catch (error) {
         console.error("Error checking Facebook configuration:", error);
         setIsConfigured(false);
