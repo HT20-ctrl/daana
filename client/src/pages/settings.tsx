@@ -161,6 +161,10 @@ export default function Settings() {
   // Handle disconnect platform
   const handleDisconnectPlatform = async (platformId: number) => {
     try {
+      // Get platform details before disconnecting
+      const platform = platforms?.find(p => p.id === platformId);
+      const platformName = platform?.displayName || "Platform";
+      
       // Delete the platform connection
       await apiRequest("DELETE", `/api/platforms/${platformId}`);
       
@@ -172,9 +176,15 @@ export default function Settings() {
       queryClient.setQueryData(["/api/platforms"], newPlatforms);
       
       toast({
-        title: "Platform disconnected",
-        description: "The platform has been disconnected successfully."
+        title: `${platformName} disconnected`,
+        description: `${platformName} has been successfully disconnected from your account.`,
+        variant: "default"
       });
+      
+      // Clear any old URL parameters to avoid confusion
+      if (window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     } catch (error) {
       console.error("Error disconnecting platform:", error);
       toast({
