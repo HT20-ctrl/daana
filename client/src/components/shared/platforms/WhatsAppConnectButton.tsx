@@ -9,9 +9,11 @@ import { useLocation } from "wouter";
 interface WhatsAppConnectButtonProps {
   onConnect?: () => void;
   className?: string;
+  platform?: any;
+  showDisconnect?: boolean;
 }
 
-export default function WhatsAppConnectButton({ onConnect, className }: WhatsAppConnectButtonProps) {
+export default function WhatsAppConnectButton({ onConnect, className, platform, showDisconnect }: WhatsAppConnectButtonProps) {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

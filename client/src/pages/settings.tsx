@@ -530,23 +530,28 @@ export default function Settings() {
                           </Card>
                         ))}
                         
-                        {/* Facebook Connect Button - only show if Facebook not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "facebook")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <SiFacebook className="h-5 w-5 text-blue-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">Facebook</p>
-                                    <p className="text-xs text-gray-500">Connect your business pages</p>
-                                  </div>
+                        {/* Facebook - show either connect button or disconnect option */}
+                        <Card className="bg-gray-50 border">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <SiFacebook className="h-5 w-5 text-blue-600" />
+                                <div className="ml-3">
+                                  <p className="text-sm font-medium">Facebook</p>
+                                  <p className="text-xs text-gray-500">Connect your business pages</p>
                                 </div>
-                                <FacebookConnectButton />
                               </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                              {Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "facebook") ? (
+                                <FacebookConnectButton 
+                                  platform={platforms.find(p => p?.name?.toLowerCase() === "facebook")}
+                                  showDisconnect={true}
+                                />
+                              ) : (
+                                <FacebookConnectButton />
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
                         
                         {/* Instagram - show either connect button or disconnect option */}
                         <Card className="bg-gray-50 border">
@@ -571,23 +576,28 @@ export default function Settings() {
                           </CardContent>
                         </Card>
                         
-                        {/* WhatsApp Connect Button - only show if WhatsApp not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "whatsapp")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <SiWhatsapp className="h-5 w-5 text-green-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">WhatsApp</p>
-                                    <p className="text-xs text-gray-500">Connect your business account</p>
-                                  </div>
+                        {/* WhatsApp - show either connect button or disconnect option */}
+                        <Card className="bg-gray-50 border">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <SiWhatsapp className="h-5 w-5 text-green-600" />
+                                <div className="ml-3">
+                                  <p className="text-sm font-medium">WhatsApp</p>
+                                  <p className="text-xs text-gray-500">Connect your business account</p>
                                 </div>
-                                <WhatsAppConnectButton />
                               </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                              {Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "whatsapp") ? (
+                                <WhatsAppConnectButton 
+                                  platform={platforms.find(p => p?.name?.toLowerCase() === "whatsapp")}
+                                  showDisconnect={true}
+                                />
+                              ) : (
+                                <WhatsAppConnectButton />
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
                         
                         {/* Add more platforms option */}
                         <ConnectPlatformDialog trigger={

@@ -9,9 +9,11 @@ import { useLocation } from "wouter";
 interface FacebookConnectButtonProps {
   onConnect?: () => void;
   className?: string;
+  platform?: any;
+  showDisconnect?: boolean;
 }
 
-export default function FacebookConnectButton({ onConnect, className }: FacebookConnectButtonProps) {
+export default function FacebookConnectButton({ onConnect, className, platform, showDisconnect }: FacebookConnectButtonProps) {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
