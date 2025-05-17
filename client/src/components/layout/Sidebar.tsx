@@ -11,7 +11,7 @@ import {
   Settings,
   LogOut
 } from "lucide-react";
-import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiGmail, SiHubspot } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiGmail, SiHubspot, SiSalesforce } from "react-icons/si";
 import UserDropdown from "@/components/shared/UserDropdown";
 import { useState, useEffect } from "react";
 
@@ -65,7 +65,8 @@ export default function Sidebar({ user }: SidebarProps) {
   const businessTools = [
     { icon: <SiSlack className="h-5 w-5 text-purple-500" />, label: "Slack" },
     { icon: <SiGmail className="h-5 w-5 text-blue-500" />, label: "Email" },
-    { icon: <SiHubspot className="h-5 w-5 text-orange-500" />, label: "HubSpot" }
+    { icon: <SiHubspot className="h-5 w-5 text-orange-500" />, label: "HubSpot" },
+    { icon: <SiSalesforce className="h-5 w-5 text-blue-700" />, label: "Salesforce" }
   ];
 
   const sidebarClasses = cn(
