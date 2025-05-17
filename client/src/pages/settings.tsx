@@ -33,6 +33,8 @@ import { Platform, User } from "@shared/schema";
 import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
 import FacebookConnectButton from "@/components/shared/platforms/FacebookConnectButton";
 import InstagramConnectButton from "@/components/shared/platforms/InstagramConnectButton";
+import WhatsAppConnectButton from "@/components/shared/platforms/WhatsAppConnectButton";
+import SlackConnectButton from "@/components/shared/platforms/SlackConnectButton";
 import { 
   UserCircle, 
   Bell, 
@@ -471,6 +473,42 @@ export default function Settings() {
                                   </div>
                                 </div>
                                 <InstagramConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* WhatsApp Connect Button - only show if WhatsApp not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "whatsapp") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiWhatsapp className="h-5 w-5 text-green-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">WhatsApp</p>
+                                    <p className="text-xs text-gray-500">Connect your business account</p>
+                                  </div>
+                                </div>
+                                <WhatsAppConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Slack Connect Button - only show if Slack not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "slack") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiSlack className="h-5 w-5 text-purple-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Slack</p>
+                                    <p className="text-xs text-gray-500">Connect your workspace</p>
+                                  </div>
+                                </div>
+                                <SlackConnectButton />
                               </div>
                             </CardContent>
                           </Card>

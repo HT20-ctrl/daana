@@ -18,6 +18,15 @@ import {
   getInstagramStatus
 } from "./platforms/instagram";
 
+import {
+  connectWhatsApp,
+  whatsappCallback,
+  getWhatsAppMessages,
+  sendWhatsAppMessage,
+  isWhatsAppConfigured,
+  getWhatsAppStatus
+} from "./platforms/whatsapp";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -258,6 +267,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching Instagram messages:", error);
       res.status(500).json({ error: "Failed to fetch Instagram messages" });
+    }
+  });
+
+  // WhatsApp Platform Integration
+  app.get("/api/platforms/whatsapp/status", async (req, res) => {
+    res.json({
+      configured: isWhatsAppConfigured(),
+      needsCredentials: !isWhatsAppConfigured()
+    });
+  });
+
+  app.get("/api/platforms/whatsapp/connect", async (req, res) => {
+    // For development purposes, create a mock platform since we don't have real credentials
+    if (!isWhatsAppConfigured()) {
+      try {
+        const userId = "1"; // Demo user ID
+        const platform = await storage.createPlatform({
+          userId,
+          name: "whatsapp",
+          displayName: "WhatsApp Business (Demo User)",
+          accessToken: "mock-access-token",
+          refreshToken: null,
+          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isConnected: true
+        });
+        return res.redirect('/settings?wa_connected=true');
+      } catch (error) {
+        console.error("Error creating mock WhatsApp connection:", error);
+        return res.status(500).json({ error: "Failed to create mock connection" });
+      }
+    } else {
+      connectWhatsApp(req, res);
+    }
+  });
+
+  app.get("/api/platforms/whatsapp/callback", async (req, res) => {
+    if (!isWhatsAppConfigured()) {
+      res.redirect('/settings?wa_connected=true&mock=true');
+    } else {
+      whatsappCallback(req, res);
+    }
+  });
+
+  app.get("/api/platforms/:platformId/whatsapp/messages", async (req, res) => {
+    try {
+      const platformId = parseInt(req.params.platformId);
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      // Return mock WhatsApp messages for demonstration
+      const mockMessages = [
+        {
+          id: "wa-msg-1",
+          senderId: "+1415555123",
+          senderName: "Maria Garcia",
+          content: "Hello, I'd like to place an order for delivery",
+          timestamp: new Date(Date.now() - 5400000), // 90 minutes ago
+          isRead: true
+        },
+        {
+          id: "wa-msg-2",
+          senderId: "+4478901234",
+          senderName: "Thomas Wright",
+          content: "What are your operating hours today?",
+          timestamp: new Date(Date.now() - 3000000), // 50 minutes ago
+          isRead: false
+        },
+        {
+          id: "wa-msg-3",
+          senderId: "+6598765432",
+          senderName: "Lina Wong",
+          content: "Is the blue shirt still available in size M?",
+          timestamp: new Date(Date.now() - 1500000), // 25 minutes ago
+          isRead: false
+        }
+      ];
+      
+      res.json(mockMessages);
+    } catch (error) {
+      console.error("Error fetching WhatsApp messages:", error);
+      res.status(500).json({ error: "Failed to fetch WhatsApp messages" });
     }
   });
 
