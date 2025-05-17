@@ -18,6 +18,7 @@ import KnowledgeBase from "@/pages/knowledge-base";
 import AiResponses from "@/pages/ai-responses";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import Search from "@/pages/search";
 import NotFound from "@/pages/not-found";
 
 // Auth loading screen
@@ -69,6 +70,7 @@ function MainApp() {
             <Route path="/ai-responses" component={AiResponses} />
             <Route path="/analytics" component={Analytics} />
             <Route path="/settings" component={Settings} />
+            <Route path="/search" component={Search} />
             <Route component={NotFound} />
           </Switch>
         </main>
