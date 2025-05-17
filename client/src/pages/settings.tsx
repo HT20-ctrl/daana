@@ -165,26 +165,29 @@ export default function Settings() {
       const platform = platforms?.find(p => p.id === platformId);
       const platformName = platform?.displayName || "Platform";
       
+      // Show immediate feedback to the user
+      toast({
+        title: `Disconnecting ${platformName}...`,
+        description: 'Please wait a moment',
+      });
+      
       // Delete the platform connection
       await apiRequest("DELETE", `/api/platforms/${platformId}`);
       
-      // Immediately invalidate and refetch platforms data
-      await queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
-      
-      // Force a refresh of the platforms data
-      const newPlatforms = await apiRequest("GET", "/api/platforms");
-      queryClient.setQueryData(["/api/platforms"], newPlatforms);
-      
-      toast({
-        title: `${platformName} disconnected`,
-        description: `${platformName} has been successfully disconnected from your account.`,
-        variant: "default"
-      });
+      // Optimize the query invalidation
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
       
       // Clear any old URL parameters to avoid confusion
       if (window.location.search) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+      
+      // Show success message
+      toast({
+        title: `${platformName} disconnected`,
+        description: `${platformName} has been successfully disconnected from your account.`,
+        variant: "default"
+      });
     } catch (error) {
       console.error("Error disconnecting platform:", error);
       toast({
