@@ -52,6 +52,16 @@ import {
   getHubSpotStatus
 } from "./platforms/hubspot";
 
+import {
+  connectSalesforce,
+  salesforceCallback,
+  getSalesforceLeads,
+  createSalesforceLead,
+  getSalesforceOpportunities,
+  isSalesforceConfigured,
+  getSalesforceStatus
+} from "./platforms/salesforce";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -617,6 +627,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/hubspot/callback", hubspotCallback);
   app.get("/api/platforms/hubspot/contacts", getHubSpotContacts);
   app.post("/api/platforms/hubspot/contacts", createHubSpotContact);
+  
+  // Salesforce platform routes
+  app.get("/api/platforms/salesforce/status", getSalesforceStatus);
+  app.post("/api/platforms/salesforce/connect", connectSalesforce);
+  app.get("/api/platforms/salesforce/callback", salesforceCallback);
+  app.get("/api/platforms/salesforce/leads", getSalesforceLeads);
+  app.post("/api/platforms/salesforce/leads", createSalesforceLead);
+  app.get("/api/platforms/salesforce/opportunities", getSalesforceOpportunities);
 
   return httpServer;
 }
