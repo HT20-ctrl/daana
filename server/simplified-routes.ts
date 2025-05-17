@@ -198,26 +198,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Using demo Facebook connection");
       
-      // Clean up any existing Facebook platforms first
+      // Remove all Facebook platforms for the user
       const userId = "1"; // Demo user ID
       const existingPlatforms = await storage.getPlatformsByUserId(userId);
       
-      // Find and clean up all existing Facebook platforms
+      // Find and completely disconnect all existing Facebook platforms
+      console.log("Setting all existing Facebook platforms to disconnected");
       for (const platform of existingPlatforms) {
         if (platform.name === "facebook") {
-          console.log(`Cleaning up existing Facebook platform ID: ${platform.id}`);
-          // Update platform to disconnected status
-          await storage.createPlatform({
-            ...platform,
-            isConnected: false,
-            accessToken: null,
-            refreshToken: null,
-            tokenExpiry: null
-          });
+          try {
+            console.log(`Updating Facebook platform ID: ${platform.id} to disconnected`);
+            // Since we don't have a proper delete, mark as disconnected
+            await storage.createPlatform({
+              ...platform,
+              isConnected: false,
+              accessToken: null,
+              refreshToken: null,
+              tokenExpiry: null
+            });
+          } catch (error) {
+            console.error(`Failed to update platform ${platform.id}:`, error);
+          }
         }
       }
       
-      // Create a fresh Facebook connection
+      // Create a single fresh Facebook connection
       console.log("Creating new Facebook connection");
       await storage.createPlatform({
         userId,

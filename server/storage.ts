@@ -29,6 +29,7 @@ export interface IStorage {
   getPlatformsByUserId(userId: string): Promise<Platform[]>;
   getPlatformById(id: number): Promise<Platform | undefined>;
   createPlatform(platform: InsertPlatform): Promise<Platform>;
+  deletePlatform(id: number): Promise<boolean>; // Add delete platform functionality
   
   // Conversation operations
   getConversationsByUserId(userId: string): Promise<Conversation[]>;
@@ -134,6 +135,23 @@ export class MemStorage implements IStorage {
     
     this.platforms.set(id, platform);
     return platform;
+  }
+  
+  async deletePlatform(id: number): Promise<boolean> {
+    console.log(`Attempting to disconnect platform with ID: ${id}`);
+    if (!this.platforms.has(id)) {
+      console.log(`Platform ${id} not found`);
+      return false;
+    }
+    
+    const platform = this.platforms.get(id);
+    if (platform) {
+      console.log(`Disconnecting platform: ${platform.name} (ID: ${id})`);
+    }
+    
+    const deleted = this.platforms.delete(id);
+    console.log(`Platform disconnected successfully: ${platform?.name}`);
+    return deleted;
   }
 
   // Conversation operations
