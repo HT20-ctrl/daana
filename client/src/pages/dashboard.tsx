@@ -1,0 +1,263 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Download, MessageSquare, Bot, User2, Heart } from "lucide-react";
+import { SiFacebook, SiInstagram, SiWhatsapp } from "react-icons/si";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
+import StatCard from "@/components/dashboard/StatCard";
+import PlatformPerformance from "@/components/dashboard/PlatformPerformance";
+import RecentConversations from "@/components/dashboard/RecentConversations";
+import AiEfficiency from "@/components/dashboard/AiEfficiency";
+import KnowledgeBase from "@/components/dashboard/KnowledgeBase";
+import TeamActivity from "@/components/dashboard/TeamActivity";
+import { 
+  Analytics, 
+  Conversation, 
+  KnowledgeBase as KnowledgeBaseType,
+  Platform 
+} from "@shared/schema";
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const [timeRange, setTimeRange] = useState("7days");
+  
+  // Fetch data
+  const { data: analytics, isLoading: isLoadingAnalytics } = useQuery<Analytics>({
+    queryKey: ["/api/analytics"],
+  });
+  
+  const { data: conversations, isLoading: isLoadingConversations } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
+  });
+  
+  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<Platform[]>({
+    queryKey: ["/api/platforms"],
+  });
+  
+  const { data: knowledgeBase, isLoading: isLoadingKnowledgeBase } = useQuery<KnowledgeBaseType[]>({
+    queryKey: ["/api/knowledge-base"],
+  });
+  
+  // Generate sample platform performance data
+  const [performanceData, setPerformanceData] = useState([
+    { day: "Mon", value: 65 },
+    { day: "Tue", value: 80 },
+    { day: "Wed", value: 75 },
+    { day: "Thu", value: 85 },
+    { day: "Fri", value: 90 },
+    { day: "Sat", value: 70 },
+    { day: "Sun", value: 60 }
+  ]);
+  
+  // Sample team activity data
+  const teamActivities = [
+    {
+      id: 1,
+      actor: {
+        id: "1",
+        name: "Rachel Kim",
+        avatar: "https://images.unsplash.com/photo-1550525811-e5869dd03032?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&h=256"
+      },
+      action: "responded to a Facebook message from John Davis",
+      timestamp: new Date(Date.now() - 10 * 60 * 1000) // 10 minutes ago
+    },
+    {
+      id: 2,
+      actor: {
+        id: "2",
+        name: "David Wilson",
+        avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&h=256"
+      },
+      action: "uploaded a new knowledge base document",
+      target: "Return_Policy.pdf",
+      timestamp: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
+    },
+    {
+      id: 3,
+      actor: {
+        id: "3",
+        name: "Tom Jackson",
+        avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&h=256"
+      },
+      action: "connected a new Instagram business account",
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
+    }
+  ];
+  
+  // Handle time range change
+  const handleTimeRangeChange = (range: string) => {
+    setTimeRange(range);
+    
+    // Update performance data based on range
+    // This would normally fetch from API
+    if (range === "30days") {
+      setPerformanceData([
+        { day: "Week 1", value: 72 },
+        { day: "Week 2", value: 85 },
+        { day: "Week 3", value: 92 },
+        { day: "Week 4", value: 78 }
+      ]);
+    } else if (range === "90days") {
+      setPerformanceData([
+        { day: "Jan", value: 65 },
+        { day: "Feb", value: 75 },
+        { day: "Mar", value: 85 }
+      ]);
+    } else {
+      // 7days (default)
+      setPerformanceData([
+        { day: "Mon", value: 65 },
+        { day: "Tue", value: 80 },
+        { day: "Wed", value: 75 },
+        { day: "Thu", value: 85 },
+        { day: "Fri", value: 90 },
+        { day: "Sat", value: 70 },
+        { day: "Sun", value: 60 }
+      ]);
+    }
+  };
+  
+  // Format user name for welcome message
+  const getUserFirstName = () => {
+    if (user?.firstName) return user.firstName;
+    if (user?.email) return user.email.split('@')[0];
+    return "there";
+  };
+  
+  return (
+    <>
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome back, {getUserFirstName()}!</h1>
+            <p className="mt-1 text-sm text-gray-600">Here's what's happening with your social media accounts today.</p>
+          </div>
+          <div className="mt-4 md:mt-0 flex space-x-3">
+            <ConnectPlatformDialog />
+            <Button variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatCard
+          title="Total Messages"
+          value={analytics?.totalMessages || 0}
+          icon={<MessageSquare className="h-5 w-5 text-indigo-600" />}
+          iconBackground="bg-indigo-100"
+          change={{ value: "12% from yesterday", isPositive: true }}
+          delay={100}
+        />
+        
+        <StatCard
+          title="AI Responses"
+          value={analytics?.aiResponses || 0}
+          icon={<Bot className="h-5 w-5 text-green-600" />}
+          iconBackground="bg-green-100"
+          change={{ value: "18% from yesterday", isPositive: true }}
+          delay={200}
+        />
+        
+        <StatCard
+          title="Manual Responses"
+          value={analytics?.manualResponses || 0}
+          icon={<User2 className="h-5 w-5 text-red-600" />}
+          iconBackground="bg-red-100"
+          change={{ value: "8% from yesterday", isPositive: false }}
+          delay={300}
+        />
+        
+        <StatCard
+          title="Sentiment Score"
+          value={`${analytics?.sentimentScore || 0}%`}
+          icon={<Heart className="h-5 w-5 text-blue-600" />}
+          iconBackground="bg-blue-100"
+          change={{ value: "3% from yesterday", isPositive: true }}
+          delay={400}
+        />
+      </div>
+      
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column (2/3 width) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Platform Performance Chart */}
+          <PlatformPerformance 
+            data={performanceData}
+            onTimeRangeChange={handleTimeRangeChange}
+          />
+          
+          {/* Recent Conversations */}
+          <RecentConversations 
+            conversations={conversations} 
+            isLoading={isLoadingConversations}
+          />
+          
+          {/* Social Media Dashboard Banner */}
+          <Card className="overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "700ms" }}>
+            <img 
+              src="https://images.unsplash.com/photo-1611162616475-46b635cb6868?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400" 
+              alt="Social media management dashboard" 
+              className="w-full h-auto object-cover"
+            />
+            <CardContent className="p-4">
+              <h3 className="text-lg font-medium text-gray-900">Unified Social Platform</h3>
+              <p className="mt-1 text-sm text-gray-500">Manage all your social accounts in one powerful dashboard with AI assistance.</p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Right Column (1/3 width) */}
+        <div className="space-y-6">
+          {/* AI Efficiency */}
+          <AiEfficiency
+            percentage={analytics?.aiResponses && analytics.totalMessages > 0 
+              ? Math.round((analytics.aiResponses / analytics.totalMessages) * 100) 
+              : 0}
+            aiMessages={analytics?.aiResponses || 0}
+            totalMessages={analytics?.totalMessages || 0}
+            responseTime="24 seconds"
+            satisfaction="92%"
+            escalationRate="22%"
+            model="OpenAI GPT-4o"
+          />
+          
+          {/* Knowledge Base */}
+          <KnowledgeBase 
+            knowledgeBase={knowledgeBase || []} 
+            isLoading={isLoadingKnowledgeBase}
+          />
+          
+          {/* Team Activity */}
+          <TeamActivity 
+            activities={teamActivities}
+            isLoading={false}
+          />
+          
+          {/* Team Collaboration Banner */}
+          <Card className="overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "1100ms" }}>
+            <img 
+              src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
+              alt="Team collaboration on social media strategy" 
+              className="w-full h-auto object-cover"
+            />
+            <CardContent className="p-4">
+              <h3 className="text-lg font-medium text-gray-900">Team Collaboration</h3>
+              <p className="mt-1 text-sm text-gray-500">Work together seamlessly to manage customer communications.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
