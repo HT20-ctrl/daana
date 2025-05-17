@@ -192,6 +192,21 @@ export default function Settings() {
         return <MessageSquare className="h-5 w-5 text-gray-500" />;
     }
   };
+  
+  // Trigger platform connection when coming from sidebar
+  useEffect(() => {
+    if (showPlatformConnect) {
+      // If there's a platform to connect, trigger clicking the appropriate button
+      const buttonId = `connect-${showPlatformConnect}-button`;
+      setTimeout(() => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+          button.click();
+          setShowPlatformConnect(null);
+        }
+      }, 300); // Small delay to ensure the UI is fully rendered
+    }
+  }, [showPlatformConnect, activeTab]);
 
   return (
     <>

@@ -160,12 +160,20 @@ export default function Sidebar({ user }: SidebarProps) {
               
               return (
                 <div key={index} className="w-full">
-                  <Link href={isConnected ? "/settings" : `/settings?connect=${platform.name}`}>
-                    <a className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass}`}>
-                      {platform.icon}
-                      <span className="ml-3">{platform.label}{statusText}</span>
-                    </a>
-                  </Link>
+                  <button 
+                    onClick={() => {
+                      if (isConnected) {
+                        window.location.href = "/settings";
+                      } else {
+                        // Direct connection for platforms
+                        window.location.href = `/api/platforms/${platform.name}/connect`;
+                      }
+                    }}
+                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
+                  >
+                    {platform.icon}
+                    <span className="ml-3">{platform.label}{statusText}</span>
+                  </button>
                 </div>
               );
             })}
@@ -185,12 +193,20 @@ export default function Sidebar({ user }: SidebarProps) {
               
               return (
                 <div key={index} className="w-full">
-                  <Link href={isConnected ? "/settings" : `/settings?connect=${tool.name}`}>
-                    <a className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass}`}>
-                      {tool.icon}
-                      <span className="ml-3">{tool.label}{statusText}</span>
-                    </a>
-                  </Link>
+                  <button 
+                    onClick={() => {
+                      if (isConnected) {
+                        window.location.href = "/settings";
+                      } else {
+                        // Direct connection for business tools
+                        window.location.href = `/api/platforms/${tool.name}/connect`;
+                      }
+                    }}
+                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
+                  >
+                    {tool.icon}
+                    <span className="ml-3">{tool.label}{statusText}</span>
+                  </button>
                 </div>
               );
             })}
