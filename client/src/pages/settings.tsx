@@ -174,8 +174,17 @@ export default function Settings() {
       // Delete the platform connection
       await apiRequest("DELETE", `/api/platforms/${platformId}`);
       
-      // Optimize the query invalidation
+      // Force-refresh the platforms list
+      const newPlatforms = await apiRequest("GET", "/api/platforms");
+      
+      // Immediately update the local state with the new platforms list
+      setPlatforms(newPlatforms);
+      
+      // Also invalidate all platform queries to ensure UI consistency
       queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      
+      // Force platform status refresh
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/${platform?.name}/status`] });
       
       // Clear any old URL parameters to avoid confusion
       if (window.location.search) {
