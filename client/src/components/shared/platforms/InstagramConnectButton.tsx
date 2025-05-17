@@ -56,8 +56,9 @@ export default function InstagramConnectButton({
     const checkInstagramStatus = async () => {
       try {
         const response = await apiRequest("GET", "/api/platforms/instagram/status");
-        setIsConfigured(!!response.configured);
-        setIsConnected(!!response.connected);
+        // Handle response data safely with fallbacks to prevent rendering errors
+        setIsConfigured(response && response.configured ? true : false);
+        setIsConnected(response && response.connected ? true : false);
       } catch (error) {
         console.error("Error checking Instagram configuration:", error);
         setIsConfigured(false);
