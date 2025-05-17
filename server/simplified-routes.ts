@@ -35,6 +35,14 @@ import {
   getSlackStatus
 } from "./platforms/slack";
 
+import {
+  connectEmail,
+  getEmailMessages,
+  sendEmailMessage,
+  isEmailConfigured,
+  getEmailStatus
+} from "./platforms/email";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -473,6 +481,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending Slack message:", error);
       res.status(500).json({ error: "Failed to send Slack message" });
+    }
+  });
+
+  // Email Platform Integration
+  app.get("/api/platforms/email/status", async (req, res) => {
+    res.json({
+      configured: isEmailConfigured(),
+      needsCredentials: !isEmailConfigured()
+    });
+  });
+
+  app.get("/api/platforms/email/connect", async (req, res) => {
+    // For development purposes, create a mock platform since we don't have real credentials
+    if (!isEmailConfigured()) {
+      try {
+        const userId = "1"; // Demo user ID
+        const platform = await storage.createPlatform({
+          userId,
+          name: "email",
+          displayName: "Email Integration (Demo)",
+          accessToken: "mock-sendgrid-key",
+          refreshToken: null,
+          tokenExpiry: null, // API keys don't expire
+          isConnected: true
+        });
+        return res.redirect('/settings?email_connected=true');
+      } catch (error) {
+        console.error("Error creating mock Email connection:", error);
+        return res.status(500).json({ error: "Failed to create mock connection" });
+      }
+    } else {
+      connectEmail(req, res);
+    }
+  });
+
+  app.get("/api/platforms/:platformId/email/messages", async (req, res) => {
+    try {
+      const platformId = parseInt(req.params.platformId);
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      if (isEmailConfigured()) {
+        // Use real Email API to get messages
+        return getEmailMessages(req, res);
+      }
+      
+      // Return mock Email messages for demonstration
+      const mockMessages = [
+        {
+          id: "email-msg-1",
+          senderId: "customer@example.com",
+          senderName: "John Customer",
+          content: "I have a question about my recent order #12345",
+          subject: "Order Inquiry",
+          timestamp: new Date(Date.now() - 7200000), // 2 hours ago
+          isRead: true
+        },
+        {
+          id: "email-msg-2",
+          senderId: "support@competitor.com",
+          senderName: "Jane Potential",
+          content: "I'm interested in your enterprise plan. Can you send me more information?",
+          subject: "Enterprise Plan Information",
+          timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+          isRead: false
+        },
+        {
+          id: "email-msg-3",
+          senderId: "billing@partner.com",
+          senderName: "Finance Team",
+          content: "Your invoice #INV-567 is now available",
+          subject: "Invoice Available",
+          timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
+          isRead: false
+        }
+      ];
+      
+      res.json(mockMessages);
+    } catch (error) {
+      console.error("Error fetching Email messages:", error);
+      res.status(500).json({ error: "Failed to fetch Email messages" });
+    }
+  });
+
+  app.post("/api/platforms/:platformId/email/messages", async (req, res) => {
+    try {
+      const { to, subject, message } = req.body;
+      const platformId = parseInt(req.params.platformId);
+      
+      if (!to || !subject || !message) {
+        return res.status(400).json({ error: "Email recipient, subject, and message content are required" });
+      }
+      
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      if (isEmailConfigured()) {
+        // Use real Email API to send message
+        return sendEmailMessage(req, res);
+      }
+      
+      // Mock sending an email
+      console.log(`[MOCK] Email would be sent to ${to} with subject: ${subject}`);
+      res.json({ 
+        success: true, 
+        message: "Email would be sent (mock mode)",
+        mock: true,
+        messageId: `mock-email-${Date.now()}`
+      });
+    } catch (error) {
+      console.error("Error sending Email:", error);
+      res.status(500).json({ error: "Failed to send Email" });
     }
   });
 

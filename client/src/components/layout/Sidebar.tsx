@@ -111,14 +111,15 @@ export default function Sidebar({ user }: SidebarProps) {
           </h3>
           <div className="mt-2 space-y-1">
             {socialPlatforms.map((platform, index) => (
-              <a 
+              <Link 
                 key={index}
-                href="#" 
-                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100"
+                href="/settings" 
               >
-                {platform.icon}
-                <span className="ml-3">{platform.label}</span>
-              </a>
+                <a className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100">
+                  {platform.icon}
+                  <span className="ml-3">{platform.label}</span>
+                </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -130,14 +131,15 @@ export default function Sidebar({ user }: SidebarProps) {
           </h3>
           <div className="mt-2 space-y-1">
             {businessTools.map((tool, index) => (
-              <a 
+              <Link 
                 key={index}
-                href="#" 
-                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100"
+                href="/settings" 
               >
-                {tool.icon}
-                <span className="ml-3">{tool.label}</span>
-              </a>
+                <a className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100">
+                  {tool.icon}
+                  <span className="ml-3">{tool.label}</span>
+                </a>
+              </Link>
             ))}
           </div>
         </div>

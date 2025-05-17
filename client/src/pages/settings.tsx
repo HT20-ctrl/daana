@@ -35,6 +35,7 @@ import FacebookConnectButton from "@/components/shared/platforms/FacebookConnect
 import InstagramConnectButton from "@/components/shared/platforms/InstagramConnectButton";
 import WhatsAppConnectButton from "@/components/shared/platforms/WhatsAppConnectButton";
 import SlackConnectButton from "@/components/shared/platforms/SlackConnectButton";
+import EmailConnectButton from "@/components/shared/platforms/EmailConnectButton";
 import { 
   UserCircle, 
   Bell, 
@@ -509,6 +510,24 @@ export default function Settings() {
                                   </div>
                                 </div>
                                 <SlackConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Email Connect Button - only show if Email not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "email") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <Mail className="h-5 w-5 text-blue-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Email</p>
+                                    <p className="text-xs text-gray-500">Connect email integration</p>
+                                  </div>
+                                </div>
+                                <EmailConnectButton />
                               </div>
                             </CardContent>
                           </Card>
