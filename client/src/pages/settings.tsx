@@ -446,6 +446,11 @@ export default function Settings() {
                         {Array.isArray(platforms) && platforms
                          .filter(p => p && p.name && ["facebook", "instagram", "whatsapp"].includes(p.name.toLowerCase()))
                          .filter(p => p.isConnected === true) // Only show connected platforms
+                         // Special handling for Facebook - only show one card per platform type
+                         .filter((platform, index, self) => 
+                            platform.name.toLowerCase() !== "facebook" || 
+                            index === self.findIndex(p => p.name.toLowerCase() === "facebook")
+                         )
                          .map((platform) => (
                           <Card key={platform.id} className="bg-gray-50 border">
                             <CardContent className="p-4">
