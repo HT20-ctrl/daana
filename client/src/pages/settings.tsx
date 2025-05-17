@@ -494,7 +494,7 @@ export default function Settings() {
                         ))}
                         
                         {/* Facebook Connect Button - only show if Facebook not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "facebook") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "facebook")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
