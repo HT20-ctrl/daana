@@ -20,12 +20,27 @@ export function isFacebookConfigured(): boolean {
 export async function getFacebookStatus(req: Request, res: Response) {
   try {
     const isConfigured = isFacebookConfigured();
+    
+    // Also check if user already has connected Facebook
+    const userId = "1"; // Default demo user ID
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    const connectedFacebook = userPlatforms.find(p => 
+      p.name === "facebook" && 
+      p.isConnected && 
+      p.accessToken
+    );
+    
+    const isConnected = !!connectedFacebook;
+    
     res.json({
       configured: isConfigured,
+      connected: isConnected,
       needsCredentials: !isConfigured,
-      message: isConfigured 
-        ? "Facebook API is configured and ready to connect" 
-        : "Facebook API credentials required"
+      message: isConnected 
+        ? "Facebook is connected" 
+        : isConfigured 
+          ? "Facebook API is configured and ready to connect" 
+          : "Facebook API credentials required"
     });
   } catch (error) {
     console.error("Error checking Facebook configuration:", error);
