@@ -34,7 +34,10 @@ export default function Sidebar({ user }: SidebarProps) {
 
   // Check if a platform is connected
   const isPlatformConnected = (name: string): boolean => {
-    return platforms?.some(p => p.name.toLowerCase() === name.toLowerCase()) || false;
+    if (!platforms || !Array.isArray(platforms)) return false;
+    return platforms.some(p => 
+      p.name?.toLowerCase() === name.toLowerCase() && p.isConnected === true
+    ) || false;
   };
 
   // Close sidebar on location change in mobile view

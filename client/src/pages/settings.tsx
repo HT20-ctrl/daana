@@ -443,7 +443,7 @@ export default function Settings() {
                       <h3 className="text-lg font-medium mb-4">Social Media</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Show existing platforms */}
-                        {platforms.filter(p => ["facebook", "instagram", "whatsapp"].includes(p.name.toLowerCase())).map((platform) => (
+                        {Array.isArray(platforms) && platforms.filter(p => p && p.name && ["facebook", "instagram", "whatsapp"].includes(p.name.toLowerCase())).map((platform) => (
                           <Card key={platform.id} className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
