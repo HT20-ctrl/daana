@@ -222,12 +222,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create a single fresh Facebook connection
-      console.log("Creating new Facebook connection");
+      // Create a single fresh Facebook connection for this specific account
+      console.log("Creating new Facebook connection for individual account");
       await storage.createPlatform({
         userId,
         name: "facebook",
-        displayName: "Facebook (Demo User)",
+        displayName: "Facebook - Main Business Page",
         accessToken: "mock-access-token",
         refreshToken: null,
         tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
