@@ -119,22 +119,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // In a real app, this would revoke the access token with the platform's API
       
-      // Create a new platform entry with the disconnected state
-      const updatedPlatform = await storage.createPlatform({
-        userId: platform.userId,
-        name: platform.name,
-        displayName: `${platform.name.charAt(0).toUpperCase() + platform.name.slice(1)} (Disconnected)`,
-        accessToken: null,
-        refreshToken: null,
-        tokenExpiry: null,
-        isConnected: false
-      });
+      // Completely remove the platform instead of creating a disconnected version
+      await storage.deletePlatform(platformId);
       
-      console.log(`Platform disconnected successfully: ${updatedPlatform.name}`);
+      // Also delete any other platforms with the same name to ensure clean state
+      const userPlatforms = await storage.getPlatformsByUserId(platform.userId);
+      
+      for (const p of userPlatforms) {
+        if (p.name === platform.name && p.id !== platformId) {
+          console.log(`Also removing related platform ID: ${p.id}`);
+          await storage.deletePlatform(p.id);
+        }
+      }
+      
+      console.log(`Platform ${platform.name} successfully disconnected`);
       
       res.status(200).json({ 
-        message: "Platform disconnected successfully",
-        platform: updatedPlatform
+        message: "Platform disconnected successfully"
       });
     } catch (error) {
       console.error("Error disconnecting platform:", error);
