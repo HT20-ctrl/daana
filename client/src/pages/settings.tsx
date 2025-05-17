@@ -618,60 +618,137 @@ export default function Settings() {
                     {/* Business Tools */}
                     <div className="col-span-full mt-6">
                       <h3 className="text-lg font-medium mb-4">Business Tools</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card className="bg-gray-50 border">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <SiSlack className="h-5 w-5 text-purple-500" />
-                                <div className="ml-3">
-                                  <p className="text-sm font-medium">Slack</p>
-                                  <span className="flex items-center text-xs text-red-600 mt-1">
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Not Connected
-                                  </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Show connected business tools platforms */}
+                        {Array.isArray(platforms) && platforms
+                         .filter(p => p && p.name && ["slack", "email", "hubspot", "salesforce"].includes(p.name.toLowerCase()))
+                         .filter(p => p.isConnected === true) // Only show connected platforms
+                         .map((platform) => (
+                          <Card key={platform.id} className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  {getPlatformIcon(platform.name)}
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">{platform.displayName}</p>
+                                    <div className="flex items-center mt-1">
+                                      <span className="flex items-center text-xs text-green-600">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Connected
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
+                                
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm">Disconnect</Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Disconnect {platform.displayName}?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will disconnect your {platform.displayName} account. You will need to reconnect to continue managing conversations from this platform.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDisconnectPlatform(platform.id)}
+                                      >
+                                        Disconnect
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
-                              <Button variant="outline" size="sm">Connect</Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        ))}
+                          
+                        {/* Slack Connect Button - only show if Slack not already connected */}
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "slack" && p.isConnected)) && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiSlack className="h-5 w-5 text-purple-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Slack</p>
+                                    <p className="text-xs text-gray-500">Connect your workspace</p>
+                                  </div>
+                                </div>
+                                <SlackConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
                         
-                        <Card className="bg-gray-50 border">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <SiZendesk className="h-5 w-5 text-gray-500" />
-                                <div className="ml-3">
-                                  <p className="text-sm font-medium">Zendesk</p>
-                                  <span className="flex items-center text-xs text-red-600 mt-1">
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Not Connected
-                                  </span>
+                        {/* Email Connect Button - only show if Email not already connected */}
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "email" && p.isConnected)) && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <Mail className="h-5 w-5 text-blue-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Email</p>
+                                    <p className="text-xs text-gray-500">Connect email integration</p>
+                                  </div>
                                 </div>
+                                <EmailConnectButton />
                               </div>
-                              <Button variant="outline" size="sm">Connect</Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        )}
                         
-                        <Card className="bg-gray-50 border">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <SiHubspot className="h-5 w-5 text-orange-500" />
-                                <div className="ml-3">
-                                  <p className="text-sm font-medium">HubSpot</p>
-                                  <span className="flex items-center text-xs text-red-600 mt-1">
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Not Connected
-                                  </span>
+                        {/* HubSpot Connect Button - only show if HubSpot not already connected */}
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "hubspot" && p.isConnected)) && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiHubspot className="h-5 w-5 text-orange-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">HubSpot</p>
+                                    <p className="text-xs text-gray-500">Connect CRM integration</p>
+                                  </div>
                                 </div>
+                                <HubSpotConnectButton />
                               </div>
-                              <Button variant="outline" size="sm">Connect</Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Salesforce Connect Button - only show if Salesforce not already connected */}
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "salesforce" && p.isConnected)) && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiSalesforce className="h-5 w-5 text-blue-700" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Salesforce</p>
+                                    <p className="text-xs text-gray-500">Connect CRM integration</p>
+                                  </div>
+                                </div>
+                                <SalesforceConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Add more platforms option */}
+                        <ConnectPlatformDialog trigger={
+                          <Card className="bg-gray-50 border border-dashed cursor-pointer hover:bg-gray-100 transition-colors">
+                            <CardContent className="p-4 flex flex-col items-center justify-center h-full">
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500">+</span>
+                              </div>
+                              <p className="text-sm font-medium text-gray-500 mt-2">Add Business Tool</p>
+                            </CardContent>
+                          </Card>
+                        } />
                       </div>
                     </div>
                   </div>
