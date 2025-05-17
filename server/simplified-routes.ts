@@ -101,6 +101,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch platforms" });
     }
   });
+  
+  // Disconnect platform endpoint
+  app.delete("/api/platforms/:platformId", async (req, res) => {
+    try {
+      const platformId = parseInt(req.params.platformId);
+      console.log(`Attempting to disconnect platform with ID: ${platformId}`);
+      
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        console.log(`Platform with ID ${platformId} not found`);
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      console.log(`Disconnecting platform: ${platform.name} (ID: ${platformId})`);
+      
+      // In a real app, this would revoke the access token with the platform's API
+      
+      // Create a new platform entry with the disconnected state
+      const updatedPlatform = await storage.createPlatform({
+        userId: platform.userId,
+        name: platform.name,
+        displayName: `${platform.name.charAt(0).toUpperCase() + platform.name.slice(1)} (Disconnected)`,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null,
+        isConnected: false
+      });
+      
+      console.log(`Platform disconnected successfully: ${updatedPlatform.name}`);
+      
+      res.status(200).json({ 
+        message: "Platform disconnected successfully",
+        platform: updatedPlatform
+      });
+    } catch (error) {
+      console.error("Error disconnecting platform:", error);
+      res.status(500).json({ error: "Failed to disconnect platform" });
+    }
+  });
 
   // Conversations API
   app.get("/api/conversations", async (req, res) => {
@@ -148,22 +188,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session = {};
       }
 
+      console.log("Facebook connect endpoint called");
+      
       // If Facebook is configured with real credentials, use the OAuth flow
       if (isFacebookConfigured()) {
+        console.log("Using real Facebook OAuth flow");
         return connectFacebook(req, res);
       }
       
-      // Otherwise for the demo, create a simulated connection
+      console.log("Using demo Facebook connection");
+      
+      // Check if user already has Facebook connected
       const userId = "1"; // Demo user ID
-      const platform = await storage.createPlatform({
-        userId,
-        name: "facebook",
-        displayName: "Facebook (Demo User)",
-        accessToken: "mock-access-token",
-        refreshToken: null,
-        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        isConnected: true
-      });
+      const existingPlatforms = await storage.getPlatformsByUserId(userId);
+      const existingFacebookPlatform = existingPlatforms.find(p => 
+        p.name === "facebook" && p.isConnected === true
+      );
+      
+      if (existingFacebookPlatform) {
+        console.log("Facebook already connected, refreshing connection");
+        // If already connected, refresh the token
+        await storage.createPlatform({
+          userId,
+          name: "facebook",
+          displayName: "Facebook (Demo User)",
+          accessToken: "mock-access-token-refreshed",
+          refreshToken: null,
+          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isConnected: true
+        });
+      } else {
+        console.log("Creating new Facebook connection");
+        // Otherwise, create a new connection
+        await storage.createPlatform({
+          userId,
+          name: "facebook",
+          displayName: "Facebook (Demo User)",
+          accessToken: "mock-access-token",
+          refreshToken: null,
+          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isConnected: true
+        });
+      }
       
       // Redirect back to the settings page with a success parameter
       return res.redirect('/settings?fb_connected=true');

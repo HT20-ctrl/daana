@@ -164,18 +164,15 @@ export default function Sidebar({ user }: SidebarProps) {
                     onClick={() => {
                       if (isConnected) {
                         // If connected, go to settings page
-                        window.location.href = "/settings";
+                        window.location.href = "/settings?tab=platforms";
                       } else {
-                        // If not connected, redirect to settings page with the platform tab open
-                        window.location.href = `/settings?tab=platforms`;
-                        
-                        // Add a small delay and then trigger a click on the connect button
-                        setTimeout(() => {
-                          const connectButton = document.querySelector(`#connect-${platform.name}-button button`);
-                          if (connectButton && connectButton instanceof HTMLElement) {
-                            connectButton.click();
-                          }
-                        }, 500);
+                        // For Facebook, directly connect without delay
+                        if (platform.name === "facebook") {
+                          window.location.href = "/api/platforms/facebook/connect";
+                        } else {
+                          // For other platforms, go to settings with platform tab open
+                          window.location.href = `/settings?tab=platforms`;
+                        }
                       }
                     }}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
@@ -206,18 +203,10 @@ export default function Sidebar({ user }: SidebarProps) {
                     onClick={() => {
                       if (isConnected) {
                         // If connected, go to settings page
-                        window.location.href = "/settings";
+                        window.location.href = "/settings?tab=platforms";
                       } else {
-                        // If not connected, redirect to settings page with the platform tab open
+                        // For all business tools, go to settings with platform tab open
                         window.location.href = `/settings?tab=platforms`;
-                        
-                        // Add a small delay and then trigger a click on the connect button
-                        setTimeout(() => {
-                          const connectButton = document.querySelector(`#connect-${tool.name}-button button`);
-                          if (connectButton && connectButton instanceof HTMLElement) {
-                            connectButton.click();
-                          }
-                        }, 500);
                       }
                     }}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
