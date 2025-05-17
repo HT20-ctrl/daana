@@ -78,7 +78,182 @@ export class MemStorage implements IStorage {
   }
 
   private initDemoData() {
-    // Can be used to add initial demo data if needed
+    // Add demo user if not exists
+    const demoUser: UpsertUser = {
+      id: "1",
+      email: "demo@example.com",
+      firstName: "Demo",
+      lastName: "User",
+      role: "admin",
+      profileImageUrl: "https://i.pravatar.cc/300?u=demo@example.com"
+    };
+    
+    this.upsertUser(demoUser);
+    
+    // Add sample platforms
+    const platforms = [
+      {
+        name: "facebook",
+        displayName: "Facebook",
+        userId: "1",
+        isConnected: true,
+        accessToken: "sample-token-facebook",
+        refreshToken: null,
+        tokenExpiry: null
+      },
+      {
+        name: "instagram",
+        displayName: "Instagram",
+        userId: "1",
+        isConnected: false,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null
+      },
+      {
+        name: "slack",
+        displayName: "Slack",
+        userId: "1",
+        isConnected: true,
+        accessToken: "sample-token-slack",
+        refreshToken: null,
+        tokenExpiry: null
+      }
+    ];
+    
+    platforms.forEach(platform => this.createPlatform(platform));
+    
+    // Add sample conversations
+    const conversations = [
+      {
+        userId: "1",
+        platformId: 1, // Facebook
+        customerName: "John Davis",
+        customerAvatar: "https://i.pravatar.cc/300?u=john.davis@example.com",
+        lastMessage: "Thanks for resolving my issue so quickly!",
+        isActive: true,
+        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+      },
+      {
+        userId: "1",
+        platformId: 1, // Facebook
+        customerName: "Sarah Williams",
+        customerAvatar: "https://i.pravatar.cc/300?u=sarah.williams@example.com",
+        lastMessage: "I'd like to speak with a human agent please.",
+        isActive: true,
+        lastMessageAt: new Date(Date.now() - 5 * 60 * 60 * 1000) // 5 hours ago
+      },
+      {
+        userId: "1",
+        platformId: 3, // Slack
+        customerName: "Alex Thompson",
+        customerAvatar: "https://i.pravatar.cc/300?u=alex.thompson@example.com",
+        lastMessage: "When will my order arrive?",
+        isActive: true,
+        lastMessageAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
+      }
+    ];
+    
+    conversations.forEach(convo => {
+      const conversation = this.createConversation(convo);
+      
+      // Add messages for each conversation
+      if (convo.customerName === "John Davis") {
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Hello, I have a question about my recent order #12345",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Hi John! I'd be happy to help you with your order #12345. What specific information are you looking for?",
+          isFromCustomer: false,
+          isAiGenerated: true
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "I ordered a blue shirt but received a red one. Can I get it exchanged?",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "I apologize for the mix-up. I'd be happy to process an exchange for you. I've created a return label that will be emailed to you shortly. Once we receive the red shirt, we'll ship out the blue one immediately.",
+          isFromCustomer: false,
+          isAiGenerated: true
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Thanks for resolving my issue so quickly!",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+      }
+      
+      if (convo.customerName === "Sarah Williams") {
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "I've been waiting for my refund for two weeks now",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Hello Sarah, I understand your concern about the refund delay. Let me look into this for you. Could you please provide your order number?",
+          isFromCustomer: false,
+          isAiGenerated: true
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Order #89012. It was supposed to be processed within 5-7 business days.",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "Thank you for providing the order number. I can see that your refund for order #89012 was processed on our end, but it may take additional time for your bank to reflect it in your account. This typically takes 5-10 business days depending on your bank's policies.",
+          isFromCustomer: false,
+          isAiGenerated: true
+        });
+        
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "I'd like to speak with a human agent please.",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+      }
+      
+      if (convo.customerName === "Alex Thompson") {
+        this.createMessage({
+          conversationId: conversation.id,
+          content: "When will my order arrive?",
+          isFromCustomer: true,
+          isAiGenerated: false
+        });
+      }
+    });
+    
+    // Initialize analytics
+    const analytics: Analytics = {
+      id: 1,
+      userId: "1",
+      totalMessages: 9,
+      aiResponses: 3,
+      manualResponses: 0,
+      sentimentScore: 85,
+      date: new Date()
+    };
+    
+    this.analytics.set("1", analytics);
   }
 
   // User operations
