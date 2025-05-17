@@ -18,7 +18,6 @@ import KnowledgeBase from "@/pages/knowledge-base";
 import AiResponses from "@/pages/ai-responses";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
-import SlackPage from "@/pages/slack";
 import NotFound from "@/pages/not-found";
 
 // Auth loading screen
@@ -69,7 +68,6 @@ function MainApp() {
             <Route path="/knowledge-base" component={KnowledgeBase} />
             <Route path="/ai-responses" component={AiResponses} />
             <Route path="/analytics" component={Analytics} />
-            <Route path="/slack" component={SlackPage} />
             <Route path="/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>

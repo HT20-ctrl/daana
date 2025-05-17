@@ -10,34 +10,7 @@ export function isSlackConfigured(): boolean {
 
 // Get Slack platform status
 export async function getSlackStatus(req: Request, res: Response) {
-  try {
-    const isConfigured = isSlackConfigured();
-    
-    // Also check if user already has connected Slack
-    const userId = "1"; // Default demo user ID
-    const userPlatforms = await storage.getPlatformsByUserId(userId);
-    const connectedSlack = userPlatforms.find(p => 
-      p.name === "slack" && 
-      p.isConnected && 
-      p.accessToken
-    );
-    
-    const isConnected = !!connectedSlack;
-    
-    res.json({
-      configured: isConfigured,
-      connected: isConnected,
-      needsCredentials: !isConfigured,
-      message: isConnected 
-        ? "Slack is connected" 
-        : isConfigured 
-          ? "Slack API is configured and ready to connect" 
-          : "Slack API credentials required"
-    });
-  } catch (error) {
-    console.error("Error checking Slack configuration:", error);
-    res.status(500).json({ error: "Failed to check Slack configuration" });
-  }
+  res.json({ configured: isSlackConfigured() });
 }
 
 // Connect to Slack API
@@ -49,8 +22,9 @@ export async function connectSlack(req: Request, res: Response) {
   }
 
   try {
-    // We don't need CSRF protection for direct bot token usage
-    // but we'll keep this structure for future OAuth implementation
+    // Generate random state for CSRF protection
+    const state = crypto.randomBytes(16).toString("hex");
+    req.session.slackState = state;
 
     // In a real implementation, this would redirect to Slack OAuth flow
     // Since we're using Bot tokens directly, we would just verify the token works
@@ -63,8 +37,8 @@ export async function connectSlack(req: Request, res: Response) {
       throw new Error("Slack API token validation failed");
     }
 
-    // Get user ID from authenticated user or use default for demo
-    const userId = "1"; // Using demo user ID
+    // Get user ID from authenticated user
+    const userId = req.user?.claims?.sub || "demo";
     
     // Create Slack platform in database
     await storage.createPlatform({
@@ -99,7 +73,7 @@ export async function getSlackMessages(req: Request, res: Response) {
     
     // Get messages from the configured channel
     const result = await slack.conversations.history({
-      channel: process.env.SLACK_CHANNEL_ID!,
+      channel: process.env.SLACK_CHANNEL_ID,
       limit: 10
     });
     

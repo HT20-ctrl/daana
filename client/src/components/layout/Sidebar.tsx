@@ -70,7 +70,6 @@ export default function Sidebar({ user }: SidebarProps) {
     { href: "/ai-responses", icon: <Bot className="h-5 w-5" />, label: "AI Responses" },
     { href: "/knowledge-base", icon: <BookText className="h-5 w-5" />, label: "Knowledge Base" },
     { href: "/analytics", icon: <BarChart2 className="h-5 w-5" />, label: "Analytics" },
-    { href: "/slack", icon: <SiSlack className="h-5 w-5 text-purple-600" />, label: "Slack" },
     { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings" }
   ];
 
