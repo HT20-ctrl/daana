@@ -70,25 +70,38 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
     }
   }, [location, toast, onConnect]);
 
-  // Check if Facebook API is configured on the backend
+  // State for tracking connection status
+  const [isConnected, setIsConnected] = useState(false);
+  
+  // Check if Facebook API is configured and connected on the backend
   useEffect(() => {
-    const checkFacebookConfig = async () => {
+    const checkFacebookStatus = async () => {
       try {
         const response = await fetch("/api/platforms/facebook/status");
         if (response.ok) {
           const data = await response.json();
           setIsConfigured(!!data.configured);
+          setIsConnected(!!data.connected);
         } else {
           console.error("Error checking Facebook configuration: status", response.status);
           setIsConfigured(false);
+          setIsConnected(false);
         }
       } catch (error) {
         console.error("Error checking Facebook configuration:", error);
         setIsConfigured(false);
+        setIsConnected(false);
       }
     };
     
-    checkFacebookConfig();
+    // Check status when component mounts and when platforms change
+    checkFacebookStatus();
+    
+    // Set up polling to check status every 2 seconds
+    const statusInterval = setInterval(checkFacebookStatus, 2000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(statusInterval);
   }, []);
 
   const handleConnect = async () => {
@@ -136,7 +149,26 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
     );
   }
 
-  // If Facebook API is configured, show a direct connect button
+  // If Facebook is already connected, show a connected button
+  if (isConnected) {
+    return (
+      <div id={connectButtonId}>
+        <Button 
+          variant="outline" 
+          className={`flex items-center gap-2 bg-green-50 border-green-200 ${className}`}
+          disabled={true}
+        >
+          <SiFacebook className="text-blue-600" />
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-green-500"></span>
+            Connected
+          </span>
+        </Button>
+      </div>
+    );
+  }
+  
+  // If Facebook API is configured but not connected, show a connect button
   return (
     <div id={connectButtonId}>
       <Button 
