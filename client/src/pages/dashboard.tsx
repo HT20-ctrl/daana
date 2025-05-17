@@ -55,6 +55,9 @@ export default function Dashboard() {
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
   
+  // Determine if all data is still loading
+  const isLoading = isLoadingAnalytics || isLoadingConversations || isLoadingPlatforms || isLoadingKnowledgeBase;
+  
   // Generate sample platform performance data
   const [performanceData, setPerformanceData] = useState([
     { day: "Mon", value: 65 },
@@ -141,6 +144,11 @@ export default function Dashboard() {
     return "there";
   };
   
+  // Show skeleton loader while data is being fetched
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <>
       {/* Welcome Section */}
