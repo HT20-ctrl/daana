@@ -31,6 +31,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiZendesk, SiHubspot } from "react-icons/si";
 import { Platform, User } from "@shared/schema";
 import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
+import FacebookConnectButton from "@/components/shared/platforms/FacebookConnectButton";
+import InstagramConnectButton from "@/components/shared/platforms/InstagramConnectButton";
 import { 
   UserCircle, 
   Bell, 
@@ -387,6 +389,7 @@ export default function Settings() {
                     <div className="col-span-full">
                       <h3 className="text-lg font-medium mb-4">Social Media</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Show existing platforms */}
                         {platforms.filter(p => ["facebook", "instagram", "whatsapp"].includes(p.name.toLowerCase())).map((platform) => (
                           <Card key={platform.id} className="bg-gray-50 border">
                             <CardContent className="p-4">
@@ -436,6 +439,24 @@ export default function Settings() {
                             </CardContent>
                           </Card>
                         ))}
+                        
+                        {/* Facebook Connect Button - only show if Facebook not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "facebook") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiFacebook className="h-5 w-5 text-blue-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Facebook</p>
+                                    <p className="text-xs text-gray-500">Connect your business pages</p>
+                                  </div>
+                                </div>
+                                <FacebookConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
                         
                         {/* Add more platforms option */}
                         <ConnectPlatformDialog trigger={
