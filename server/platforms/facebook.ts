@@ -1,36 +1,69 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
 
-// These would be fetched from environment variables in a real implementation
-// For Facebook integration, we'll need proper App ID and App Secret
+// Facebook integration requires proper App ID and App Secret
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || 'https://dana-ai.replit.app/api/platforms/facebook/callback';
+// Get the hostname dynamically to support different environments
+const getRedirectUri = (req: Request): string => {
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+  const host = req.get('host') || 'localhost:5000';
+  return `${protocol}://${host}/api/platforms/facebook/callback`;
+};
 
 // Check if Facebook API credentials are configured
 export function isFacebookConfigured(): boolean {
   return !!FACEBOOK_APP_ID && !!FACEBOOK_APP_SECRET;
 }
 
+// Get Facebook connection status
+export async function getFacebookStatus(req: Request, res: Response) {
+  try {
+    const isConfigured = isFacebookConfigured();
+    res.json({
+      configured: isConfigured,
+      needsCredentials: !isConfigured,
+      message: isConfigured 
+        ? "Facebook API is configured and ready to connect" 
+        : "Facebook API credentials required"
+    });
+  } catch (error) {
+    console.error("Error checking Facebook configuration:", error);
+    res.status(500).json({ error: "Failed to check Facebook configuration" });
+  }
+}
+
 // Start Facebook OAuth flow
 export async function connectFacebook(req: Request, res: Response) {
   try {
     if (!isFacebookConfigured()) {
-      return res.status(400).json({ error: "Facebook API credentials not configured" });
+      return res.status(400).json({ 
+        error: "Facebook API credentials not configured",
+        needsCredentials: true
+      });
     }
 
     // Generate state parameter to prevent CSRF
-    const state = Math.random().toString(36).substring(2, 15);
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
     // Store state in session for validation during callback
+    if (!req.session) {
+      req.session = {};
+    }
     req.session.facebookState = state;
+    await new Promise<void>((resolve) => req.session.save(() => resolve()));
+
+    // Get dynamic redirect URI based on current request
+    const redirectUri = getRedirectUri(req);
 
     // Construct Facebook authorization URL
-    const facebookAuthUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
-    facebookAuthUrl.searchParams.append('client_id', FACEBOOK_APP_ID);
-    facebookAuthUrl.searchParams.append('redirect_uri', REDIRECT_URI);
+    const facebookAuthUrl = new URL('https://www.facebook.com/v17.0/dialog/oauth');
+    facebookAuthUrl.searchParams.append('client_id', FACEBOOK_APP_ID!);
+    facebookAuthUrl.searchParams.append('redirect_uri', redirectUri);
     facebookAuthUrl.searchParams.append('state', state);
     facebookAuthUrl.searchParams.append('scope', 'pages_messaging,pages_manage_metadata,pages_read_engagement,pages_show_list');
     
+    // Redirect user to Facebook OAuth page
     res.redirect(facebookAuthUrl.toString());
   } catch (error) {
     console.error("Error initiating Facebook OAuth flow:", error);
@@ -41,35 +74,57 @@ export async function connectFacebook(req: Request, res: Response) {
 // Handle Facebook OAuth callback
 export async function facebookCallback(req: Request, res: Response) {
   try {
-    const { code, state } = req.query;
+    const { code, state, error } = req.query;
+    
+    // Handle user cancellation or errors
+    if (error) {
+      console.error(`Facebook auth error: ${error}`);
+      return res.redirect('/settings?fb_error=true&error_reason=' + encodeURIComponent(String(error)));
+    }
+    
+    // Check for session
+    if (!req.session) {
+      return res.redirect('/settings?fb_error=true&error_reason=session_expired');
+    }
     
     // Validate state parameter to prevent CSRF attacks
-    if (state !== req.session.facebookState) {
-      return res.status(400).json({ error: "Invalid state parameter" });
+    const savedState = req.session.facebookState;
+    if (!savedState || state !== savedState) {
+      return res.redirect('/settings?fb_error=true&error_reason=invalid_state');
     }
     
     // Clear state from session
     delete req.session.facebookState;
+    await new Promise<void>((resolve) => req.session!.save(() => resolve()));
     
     if (!code) {
-      return res.status(400).json({ error: "Authorization code missing" });
+      return res.redirect('/settings?fb_error=true&error_reason=code_missing');
     }
+    
+    // Get dynamic redirect URI based on current request
+    const redirectUri = getRedirectUri(req);
     
     // Exchange code for access token
     const tokenResponse = await fetch(
-      `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${REDIRECT_URI}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`,
+      `https://graph.facebook.com/v17.0/oauth/access_token?` + 
+      `client_id=${FACEBOOK_APP_ID}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `client_secret=${FACEBOOK_APP_SECRET}&` +
+      `code=${code}`,
       { method: 'GET' }
     );
     
     if (!tokenResponse.ok) {
-      throw new Error(`Failed to exchange code for token: ${await tokenResponse.text()}`);
+      const errorText = await tokenResponse.text();
+      console.error(`Failed to exchange code for token: ${errorText}`);
+      return res.redirect('/settings?fb_error=true&error_reason=token_exchange');
     }
     
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
     
     if (!accessToken) {
-      throw new Error("Access token not received");
+      return res.redirect('/settings?fb_error=true&error_reason=no_token');
     }
     
     // Get user data from Facebook
@@ -79,16 +134,29 @@ export async function facebookCallback(req: Request, res: Response) {
     );
     
     if (!userResponse.ok) {
-      throw new Error(`Failed to fetch user data: ${await userResponse.text()}`);
+      const errorText = await userResponse.text();
+      console.error(`Failed to fetch user data: ${errorText}`);
+      return res.redirect('/settings?fb_error=true&error_reason=user_data');
     }
     
     const userData = await userResponse.json();
     
     // Get pages (business accounts) the user has access to
     const pages = userData.accounts?.data || [];
+    let hasPageAccess = pages.length > 0;
     
-    // Store the user's Facebook identity and token
-    const userId = req.user.claims.sub;
+    // Get a user ID from session or use demo ID
+    let userId = '1'; // Default demo user ID
+    
+    // If in a real auth environment, get from the request user
+    if (req.user && typeof req.user === 'object' && 'sub' in req.user) {
+      userId = String(req.user.sub);
+    } else if (req.user && typeof req.user === 'object' && 'id' in req.user) {
+      userId = String(req.user.id);
+    } else if (req.user && typeof req.user === 'object' && 'claims' in req.user) {
+      // @ts-ignore - Handle Replit Auth format
+      userId = req.user.claims.sub || userId;
+    }
     
     // Create a platform record for Facebook
     const platform = await storage.createPlatform({
@@ -101,14 +169,18 @@ export async function facebookCallback(req: Request, res: Response) {
       isConnected: true
     });
     
-    // In a real implementation, we would also store the pages the user has access to
-    // and their corresponding page access tokens
+    // Store pages info if needed in a real implementation
+    if (hasPageAccess) {
+      // In a production-ready implementation, we would store the pages data 
+      // in a separate table with references to the platform
+      console.log(`User has access to ${pages.length} Facebook pages`);
+    }
     
-    // Redirect back to the app
+    // Redirect back to the app with success parameter
     res.redirect('/settings?fb_connected=true');
   } catch (error) {
     console.error("Error handling Facebook OAuth callback:", error);
-    res.status(500).json({ error: "Failed to connect to Facebook" });
+    res.redirect('/settings?fb_error=true&error_reason=server_error');
   }
 }
 
