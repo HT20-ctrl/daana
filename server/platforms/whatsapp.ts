@@ -61,11 +61,22 @@ export async function connectWhatsApp(req: Request, res: Response) {
     
     // Generate random state for CSRF protection
     const state = crypto.randomBytes(16).toString("hex");
-    if (!req.session) {
-      req.session = {};
+    if (req.session) {
+      // @ts-ignore - Add whatsappState to session
+      req.session.whatsappState = state;
+      
+      // Check if session has save method before using it
+      if (typeof req.session.save === 'function') {
+        await new Promise<void>((resolve) => req.session!.save(() => resolve()));
+      }
+    } else {
+      console.log("Session not available, using cookie-based state");
+      res.cookie('whatsappState', state, { 
+        httpOnly: true, 
+        secure: true,
+        maxAge: 10 * 60 * 1000 // 10 minutes
+      });
     }
-    req.session.whatsappState = state;
-    await new Promise<void>((resolve) => req.session.save(() => resolve()));
     
     // In a real implementation, we would redirect to WhatsApp's business registration
     // or to Facebook's business manager which handles WhatsApp Business accounts
@@ -98,21 +109,37 @@ export async function whatsappCallback(req: Request, res: Response) {
       return res.redirect('/settings?wa_error=true&error_reason=' + encodeURIComponent(String(error)));
     }
     
-    // Check for session
-    if (!req.session) {
-      return res.redirect('/settings?wa_error=true&error_reason=session_expired');
+    // Get saved state from session or cookie
+    let savedState = null;
+    
+    // Try to get state from session
+    if (req.session) {
+      // @ts-ignore - Access whatsappState from session
+      savedState = req.session.whatsappState;
+      
+      // Clear state from session if it exists
+      if (savedState) {
+        // @ts-ignore - Delete whatsappState from session
+        delete req.session.whatsappState;
+        
+        // Save session if possible
+        if (typeof req.session.save === 'function') {
+          await new Promise<void>((resolve) => req.session!.save(() => resolve()));
+        }
+      }
+    }
+    
+    // If no state in session, try from cookie
+    if (!savedState && req.cookies && req.cookies.whatsappState) {
+      savedState = req.cookies.whatsappState;
+      res.clearCookie('whatsappState');
     }
     
     // Validate state parameter to prevent CSRF attacks
-    const savedState = req.session.whatsappState;
-    if (!state || state !== savedState) {
+    if (!savedState || state !== savedState) {
       console.error("Invalid state parameter", { state, savedState });
       return res.redirect('/settings?wa_error=true&error_reason=invalid_state');
     }
-    
-    // Clean up session state
-    delete req.session.whatsappState;
-    await new Promise<void>((resolve) => req.session!.save(() => resolve()));
     
     // Get a user ID from session or use demo ID
     let userId = '1'; // Default demo user ID

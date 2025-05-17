@@ -96,11 +96,22 @@ export async function connectFacebook(req: Request, res: Response) {
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
     // Store state in session for validation during callback
-    if (!req.session) {
-      req.session = {};
+    if (req.session) {
+      // @ts-ignore - Add facebookState to session
+      req.session.facebookState = state;
+      
+      // Check if session has save method before using it
+      if (typeof req.session.save === 'function') {
+        await new Promise<void>((resolve) => req.session!.save(() => resolve()));
+      }
+    } else {
+      console.log("Session not available, using cookie-based state");
+      res.cookie('facebookState', state, { 
+        httpOnly: true, 
+        secure: true,
+        maxAge: 10 * 60 * 1000 // 10 minutes
+      });
     }
-    req.session.facebookState = state;
-    await new Promise<void>((resolve) => req.session.save(() => resolve()));
 
     // Get dynamic redirect URI based on current request
     const redirectUri = getRedirectUri(req);
@@ -132,20 +143,37 @@ export async function facebookCallback(req: Request, res: Response) {
       return res.redirect('/settings?fb_error=true&error_reason=' + encodeURIComponent(String(error)));
     }
     
-    // Check for session
-    if (!req.session) {
-      return res.redirect('/settings?fb_error=true&error_reason=session_expired');
+    // Get saved state from session or cookie
+    let savedState = null;
+    
+    // Try to get state from session
+    if (req.session) {
+      // @ts-ignore - Access facebookState from session
+      savedState = req.session.facebookState;
+      
+      // Clear state from session if it exists
+      if (savedState) {
+        // @ts-ignore - Delete facebookState from session
+        delete req.session.facebookState;
+        
+        // Save session if possible
+        if (typeof req.session.save === 'function') {
+          await new Promise<void>((resolve) => req.session!.save(() => resolve()));
+        }
+      }
+    }
+    
+    // If no state in session, try from cookie
+    if (!savedState && req.cookies && req.cookies.facebookState) {
+      savedState = req.cookies.facebookState;
+      res.clearCookie('facebookState');
     }
     
     // Validate state parameter to prevent CSRF attacks
-    const savedState = req.session.facebookState;
     if (!savedState || state !== savedState) {
+      console.error("Invalid state parameter", { state, savedState });
       return res.redirect('/settings?fb_error=true&error_reason=invalid_state');
     }
-    
-    // Clear state from session
-    delete req.session.facebookState;
-    await new Promise<void>((resolve) => req.session!.save(() => resolve()));
     
     if (!code) {
       return res.redirect('/settings?fb_error=true&error_reason=code_missing');
