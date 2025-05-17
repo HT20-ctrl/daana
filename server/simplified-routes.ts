@@ -9,6 +9,15 @@ import {
   isFacebookConfigured
 } from "./platforms/facebook";
 
+import {
+  connectInstagram,
+  instagramCallback,
+  getInstagramMessages,
+  sendInstagramMessage,
+  isInstagramConfigured,
+  getInstagramStatus
+} from "./platforms/instagram";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -165,6 +174,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching Facebook messages:", error);
       res.status(500).json({ error: "Failed to fetch Facebook messages" });
+    }
+  });
+
+  // Instagram Platform Integration
+  app.get("/api/platforms/instagram/status", async (req, res) => {
+    res.json({
+      configured: isInstagramConfigured(),
+      needsCredentials: !isInstagramConfigured()
+    });
+  });
+
+  app.get("/api/platforms/instagram/connect", async (req, res) => {
+    // For development purposes, create a mock platform since we don't have real credentials
+    if (!isInstagramConfigured()) {
+      try {
+        const userId = "1"; // Demo user ID
+        const platform = await storage.createPlatform({
+          userId,
+          name: "instagram",
+          displayName: "Instagram (Demo User)",
+          accessToken: "mock-access-token",
+          refreshToken: null,
+          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isConnected: true
+        });
+        return res.redirect('/settings?ig_connected=true');
+      } catch (error) {
+        console.error("Error creating mock Instagram connection:", error);
+        return res.status(500).json({ error: "Failed to create mock connection" });
+      }
+    } else {
+      connectInstagram(req, res);
+    }
+  });
+
+  app.get("/api/platforms/instagram/callback", async (req, res) => {
+    if (!isInstagramConfigured()) {
+      res.redirect('/settings?ig_connected=true&mock=true');
+    } else {
+      instagramCallback(req, res);
+    }
+  });
+
+  app.get("/api/platforms/:platformId/instagram/messages", async (req, res) => {
+    try {
+      const platformId = parseInt(req.params.platformId);
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      // Return mock Instagram messages for demonstration
+      const mockMessages = [
+        {
+          id: "ig-msg-1",
+          senderId: "ig-user-123",
+          senderName: "Alex Chen",
+          content: "Do you ship to Canada?",
+          timestamp: new Date(Date.now() - 4800000), // 80 minutes ago
+          isRead: true
+        },
+        {
+          id: "ig-msg-2",
+          senderId: "ig-user-456",
+          senderName: "Isabella Rodriguez",
+          content: "Love your products! Can I get more information?",
+          timestamp: new Date(Date.now() - 2400000), // 40 minutes ago
+          isRead: false
+        },
+        {
+          id: "ig-msg-3",
+          senderId: "ig-user-789",
+          senderName: "Jordan Taylor",
+          content: "What's the price for this item?",
+          timestamp: new Date(Date.now() - 1200000), // 20 minutes ago
+          isRead: false
+        }
+      ];
+      
+      res.json(mockMessages);
+    } catch (error) {
+      console.error("Error fetching Instagram messages:", error);
+      res.status(500).json({ error: "Failed to fetch Instagram messages" });
     }
   });
 

@@ -458,6 +458,24 @@ export default function Settings() {
                           </Card>
                         )}
                         
+                        {/* Instagram Connect Button - only show if Instagram not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "instagram") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiInstagram className="h-5 w-5 text-pink-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">Instagram</p>
+                                    <p className="text-xs text-gray-500">Connect your business account</p>
+                                  </div>
+                                </div>
+                                <InstagramConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
                         {/* Add more platforms option */}
                         <ConnectPlatformDialog trigger={
                           <Card className="bg-gray-50 border border-dashed cursor-pointer hover:bg-gray-100 transition-colors">
