@@ -1,20 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Download, MessageSquare, Bot, User2, Heart } from "lucide-react";
-import { SiFacebook, SiInstagram, SiWhatsapp } from "react-icons/si";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
 import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
 import StatCard from "@/components/dashboard/StatCard";
-import PlatformPerformance from "@/components/dashboard/PlatformPerformance";
-import RecentConversations from "@/components/dashboard/RecentConversations";
-import AiEfficiency from "@/components/dashboard/AiEfficiency";
-import KnowledgeBase from "@/components/dashboard/KnowledgeBase";
-import TeamActivity from "@/components/dashboard/TeamActivity";
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+
+// Lazy load heavy components
+const PlatformPerformance = lazy(() => import("@/components/dashboard/PlatformPerformance"));
+const RecentConversations = lazy(() => import("@/components/dashboard/RecentConversations"));
+const AiEfficiency = lazy(() => import("@/components/dashboard/AiEfficiency"));
+const KnowledgeBase = lazy(() => import("@/components/dashboard/KnowledgeBase"));
+const TeamActivity = lazy(() => import("@/components/dashboard/TeamActivity"));
+
 import { 
   Analytics, 
   Conversation, 
@@ -26,21 +30,29 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("7days");
   
-  // Fetch data
+  // Fetch data with stale time and cache configurations to improve performance
   const { data: analytics, isLoading: isLoadingAnalytics } = useQuery<Analytics>({
     queryKey: ["/api/analytics"],
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
   
   const { data: conversations, isLoading: isLoadingConversations } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
   
   const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<Platform[]>({
     queryKey: ["/api/platforms"],
+    staleTime: 5 * 60 * 1000, // 5 minutes 
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
   
   const { data: knowledgeBase, isLoading: isLoadingKnowledgeBase } = useQuery<KnowledgeBaseType[]>({
     queryKey: ["/api/knowledge-base"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
   
   // Generate sample platform performance data
@@ -192,27 +204,31 @@ export default function Dashboard() {
         {/* Left Column (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Platform Performance Chart */}
-          <PlatformPerformance 
-            data={performanceData}
-            onTimeRangeChange={handleTimeRangeChange}
-          />
+          <Suspense fallback={<div className="h-72 rounded-lg bg-gray-100 animate-pulse"></div>}>
+            <PlatformPerformance 
+              data={performanceData}
+              onTimeRangeChange={handleTimeRangeChange}
+            />
+          </Suspense>
           
           {/* Recent Conversations */}
-          <RecentConversations 
-            conversations={conversations} 
-            isLoading={isLoadingConversations}
-          />
+          <Suspense fallback={<div className="h-96 rounded-lg bg-gray-100 animate-pulse"></div>}>
+            <RecentConversations 
+              conversations={conversations} 
+              isLoading={isLoadingConversations}
+            />
+          </Suspense>
           
           {/* Social Media Dashboard Banner */}
-          <Card className="overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "700ms" }}>
-            <img 
-              src="https://images.unsplash.com/photo-1611162616475-46b635cb6868?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400" 
-              alt="Social media management dashboard" 
-              className="w-full h-auto object-cover"
-            />
+          <Card className="overflow-hidden shadow-lg">
+            <div className="w-full h-[200px] bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white p-6">
+              <div className="text-center">
+                <h3 className="text-xl font-bold mb-2">Unified Social Platform</h3>
+                <p className="text-sm text-white/80">Manage all your social accounts in one powerful dashboard with AI assistance.</p>
+              </div>
+            </div>
             <CardContent className="p-4">
-              <h3 className="text-lg font-medium text-gray-900">Unified Social Platform</h3>
-              <p className="mt-1 text-sm text-gray-500">Manage all your social accounts in one powerful dashboard with AI assistance.</p>
+              <p className="text-sm text-gray-600">Connect your accounts and start managing conversations across all channels in one place.</p>
             </CardContent>
           </Card>
         </div>
@@ -220,40 +236,46 @@ export default function Dashboard() {
         {/* Right Column (1/3 width) */}
         <div className="space-y-6">
           {/* AI Efficiency */}
-          <AiEfficiency
-            percentage={analytics?.aiResponses && analytics.totalMessages > 0 
-              ? Math.round((analytics.aiResponses / analytics.totalMessages) * 100) 
-              : 0}
-            aiMessages={analytics?.aiResponses || 0}
-            totalMessages={analytics?.totalMessages || 0}
-            responseTime="24 seconds"
-            satisfaction="92%"
-            escalationRate="22%"
-            model="OpenAI GPT-4o"
-          />
+          <Suspense fallback={<div className="h-64 rounded-lg bg-gray-100 animate-pulse"></div>}>
+            <AiEfficiency
+              percentage={analytics?.aiResponses && analytics.totalMessages > 0 
+                ? Math.round((analytics.aiResponses / analytics.totalMessages) * 100) 
+                : 0}
+              aiMessages={analytics?.aiResponses || 0}
+              totalMessages={analytics?.totalMessages || 0}
+              responseTime="24 seconds"
+              satisfaction="92%"
+              escalationRate="22%"
+              model="OpenAI GPT-4o"
+            />
+          </Suspense>
           
           {/* Knowledge Base */}
-          <KnowledgeBase 
-            knowledgeBase={knowledgeBase || []} 
-            isLoading={isLoadingKnowledgeBase}
-          />
+          <Suspense fallback={<div className="h-64 rounded-lg bg-gray-100 animate-pulse"></div>}>
+            <KnowledgeBase 
+              knowledgeBase={knowledgeBase || []} 
+              isLoading={isLoadingKnowledgeBase}
+            />
+          </Suspense>
           
           {/* Team Activity */}
-          <TeamActivity 
-            activities={teamActivities}
-            isLoading={false}
-          />
+          <Suspense fallback={<div className="h-72 rounded-lg bg-gray-100 animate-pulse"></div>}>
+            <TeamActivity 
+              activities={teamActivities}
+              isLoading={false}
+            />
+          </Suspense>
           
           {/* Team Collaboration Banner */}
-          <Card className="overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "1100ms" }}>
-            <img 
-              src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
-              alt="Team collaboration on social media strategy" 
-              className="w-full h-auto object-cover"
-            />
+          <Card className="overflow-hidden shadow-lg">
+            <div className="w-full h-[160px] bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white p-6">
+              <div className="text-center">
+                <h3 className="text-lg font-bold mb-2">Team Collaboration</h3>
+                <p className="text-sm text-white/80">Work together seamlessly to manage customer communications.</p>
+              </div>
+            </div>
             <CardContent className="p-4">
-              <h3 className="text-lg font-medium text-gray-900">Team Collaboration</h3>
-              <p className="mt-1 text-sm text-gray-500">Work together seamlessly to manage customer communications.</p>
+              <p className="text-sm text-gray-600">Collaborate with your team members in real-time across all social platforms.</p>
             </CardContent>
           </Card>
         </div>
