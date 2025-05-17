@@ -66,7 +66,7 @@ export default function Settings() {
   const [showPlatformConnect, setShowPlatformConnect] = useState<string | null>(null);
   
   // Get connected platforms
-  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<Platform[]>({
+  const { data: platforms, isLoading: isLoadingPlatforms, refetch: refetchPlatforms } = useQuery<Platform[]>({
     queryKey: ["/api/platforms"],
   });
   
@@ -163,7 +163,13 @@ export default function Settings() {
     try {
       // Get platform details before disconnecting
       const platform = platforms?.find(p => p.id === platformId);
-      const platformName = platform?.displayName || "Platform";
+      
+      if (!platform) {
+        throw new Error("Platform not found");
+      }
+      
+      const platformName = platform.displayName || "Platform";
+      const platformType = platform.name; // Store platform type (facebook, etc.)
       
       // Show immediate feedback to the user
       toast({
@@ -174,22 +180,23 @@ export default function Settings() {
       // Delete the platform connection
       await apiRequest("DELETE", `/api/platforms/${platformId}`);
       
-      // Force-refresh the platforms list
-      const newPlatforms = await apiRequest("GET", "/api/platforms");
+      // Force immediate refetch to update UI
+      await refetchPlatforms();
       
-      // Immediately update the local state with the new platforms list
-      setPlatforms(newPlatforms);
+      // Force platform status refresh for this specific platform type
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/${platformType}/status`] });
       
-      // Also invalidate all platform queries to ensure UI consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
-      
-      // Force platform status refresh
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/${platform?.name}/status`] });
+      // Also invalidate all platforms
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
       
       // Clear any old URL parameters to avoid confusion
       if (window.location.search) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+      
+      // Force update platform statuses
+      await apiRequest("GET", `/api/platforms/${platformType}/status`);
+      await apiRequest("GET", "/api/platforms");
       
       // Show success message
       toast({
