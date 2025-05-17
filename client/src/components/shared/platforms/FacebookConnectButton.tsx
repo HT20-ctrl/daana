@@ -16,6 +16,9 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [location] = useLocation();
+  
+  // Create a unique ID for this component to be found by the sidebar
+  const connectButtonId = "connect-facebook-button";
 
   // Check if the user just came back from Facebook OAuth flow
   useEffect(() => {

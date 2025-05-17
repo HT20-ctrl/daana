@@ -74,6 +74,12 @@ export default function Settings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const connectPlatform = params.get('connect');
+    const tabParam = params.get('tab');
+    
+    if (tabParam) {
+      // Set the active tab based on URL parameter
+      setActiveTab(tabParam);
+    }
     
     if (connectPlatform) {
       // Set the active tab to platforms
@@ -155,16 +161,22 @@ export default function Settings() {
   // Handle disconnect platform
   const handleDisconnectPlatform = async (platformId: number) => {
     try {
-      // In production, this would call an API endpoint to disconnect platform
+      // Delete the platform connection
       await apiRequest("DELETE", `/api/platforms/${platformId}`);
       
-      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      // Immediately invalidate and refetch platforms data
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      
+      // Force a refresh of the platforms data
+      const newPlatforms = await apiRequest("GET", "/api/platforms");
+      queryClient.setQueryData(["/api/platforms"], newPlatforms);
       
       toast({
         title: "Platform disconnected",
         description: "The platform has been disconnected successfully."
       });
     } catch (error) {
+      console.error("Error disconnecting platform:", error);
       toast({
         title: "Disconnect failed",
         description: "Failed to disconnect platform. Please try again.",

@@ -163,10 +163,19 @@ export default function Sidebar({ user }: SidebarProps) {
                   <button 
                     onClick={() => {
                       if (isConnected) {
+                        // If connected, go to settings page
                         window.location.href = "/settings";
                       } else {
-                        // Direct connection for platforms
-                        window.location.href = `/api/platforms/${platform.name}/connect`;
+                        // If not connected, redirect to settings page with the platform tab open
+                        window.location.href = `/settings?tab=platforms`;
+                        
+                        // Add a small delay and then trigger a click on the connect button
+                        setTimeout(() => {
+                          const connectButton = document.querySelector(`#connect-${platform.name}-button button`);
+                          if (connectButton && connectButton instanceof HTMLElement) {
+                            connectButton.click();
+                          }
+                        }, 500);
                       }
                     }}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
@@ -196,10 +205,19 @@ export default function Sidebar({ user }: SidebarProps) {
                   <button 
                     onClick={() => {
                       if (isConnected) {
+                        // If connected, go to settings page
                         window.location.href = "/settings";
                       } else {
-                        // Direct connection for business tools
-                        window.location.href = `/api/platforms/${tool.name}/connect`;
+                        // If not connected, redirect to settings page with the platform tab open
+                        window.location.href = `/settings?tab=platforms`;
+                        
+                        // Add a small delay and then trigger a click on the connect button
+                        setTimeout(() => {
+                          const connectButton = document.querySelector(`#connect-${tool.name}-button button`);
+                          if (connectButton && connectButton instanceof HTMLElement) {
+                            connectButton.click();
+                          }
+                        }, 500);
                       }
                     }}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
