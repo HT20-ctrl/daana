@@ -94,7 +94,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms", async (req, res) => {
     try {
       const userId = "1"; // Demo user ID
-      const platforms = await storage.getPlatformsByUserId(userId);
+      let platforms = await storage.getPlatformsByUserId(userId);
+      
+      // If no platforms are found, create default platform entries for demonstration purposes
+      if (!platforms || platforms.length === 0) {
+        // Create default platform entries - these will allow users to connect to various platforms
+        const defaultPlatforms = [
+          {
+            name: "facebook",
+            displayName: "Facebook",
+            userId: userId,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isConnected: false
+          },
+          {
+            name: "instagram",
+            displayName: "Instagram",
+            userId: userId,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isConnected: false
+          },
+          {
+            name: "whatsapp",
+            displayName: "WhatsApp",
+            userId: userId,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isConnected: false
+          },
+          {
+            name: "slack",
+            displayName: "Slack",
+            userId: userId,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isConnected: false
+          },
+          {
+            name: "email",
+            displayName: "Email",
+            userId: userId,
+            accessToken: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isConnected: false
+          }
+        ];
+        
+        // Create each platform
+        for (const platform of defaultPlatforms) {
+          await storage.createPlatform(platform);
+        }
+        
+        // Get the newly created platforms
+        platforms = await storage.getPlatformsByUserId(userId);
+      }
+      
       res.json(platforms);
     } catch (error) {
       console.error("Error fetching platforms:", error);
