@@ -14,6 +14,8 @@ import {
 import { SiFacebook, SiInstagram, SiWhatsapp, SiSlack, SiGmail, SiHubspot, SiSalesforce } from "react-icons/si";
 import UserDropdown from "@/components/shared/UserDropdown";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Platform } from "@shared/schema";
 
 interface SidebarProps {
   user: User | null;
@@ -22,6 +24,18 @@ interface SidebarProps {
 export default function Sidebar({ user }: SidebarProps) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  
+  // Fetch connected platforms
+  const { data: platforms } = useQuery<Platform[]>({
+    queryKey: ["/api/platforms"],
+    enabled: !!user,
+    placeholderData: [],
+  });
+
+  // Check if a platform is connected
+  const isPlatformConnected = (name: string): boolean => {
+    return platforms?.some(p => p.name.toLowerCase() === name.toLowerCase()) || false;
+  };
 
   // Close sidebar on location change in mobile view
   useEffect(() => {
@@ -57,16 +71,44 @@ export default function Sidebar({ user }: SidebarProps) {
   ];
 
   const socialPlatforms = [
-    { icon: <SiFacebook className="h-5 w-5 text-blue-600" />, label: "Facebook" },
-    { icon: <SiInstagram className="h-5 w-5 text-pink-600" />, label: "Instagram" },
-    { icon: <SiWhatsapp className="h-5 w-5 text-green-500" />, label: "WhatsApp" }
+    { 
+      icon: <SiFacebook className="h-5 w-5 text-blue-600" />, 
+      label: "Facebook",
+      name: "facebook" 
+    },
+    { 
+      icon: <SiInstagram className="h-5 w-5 text-pink-600" />, 
+      label: "Instagram",
+      name: "instagram"
+    },
+    { 
+      icon: <SiWhatsapp className="h-5 w-5 text-green-500" />, 
+      label: "WhatsApp",
+      name: "whatsapp"
+    }
   ];
 
   const businessTools = [
-    { icon: <SiSlack className="h-5 w-5 text-purple-500" />, label: "Slack" },
-    { icon: <SiGmail className="h-5 w-5 text-blue-500" />, label: "Email" },
-    { icon: <SiHubspot className="h-5 w-5 text-orange-500" />, label: "HubSpot" },
-    { icon: <SiSalesforce className="h-5 w-5 text-blue-700" />, label: "Salesforce" }
+    { 
+      icon: <SiSlack className="h-5 w-5 text-purple-500" />, 
+      label: "Slack",
+      name: "slack"
+    },
+    { 
+      icon: <SiGmail className="h-5 w-5 text-blue-500" />, 
+      label: "Email",
+      name: "email"
+    },
+    { 
+      icon: <SiHubspot className="h-5 w-5 text-orange-500" />, 
+      label: "HubSpot",
+      name: "hubspot"
+    },
+    { 
+      icon: <SiSalesforce className="h-5 w-5 text-blue-700" />, 
+      label: "Salesforce",
+      name: "salesforce"
+    }
   ];
 
   const sidebarClasses = cn(
@@ -111,16 +153,22 @@ export default function Sidebar({ user }: SidebarProps) {
             Connected Platforms
           </h3>
           <div className="mt-2 space-y-1">
-            {socialPlatforms.map((platform, index) => (
-              <div key={index} className="w-full">
-                <Link href="/settings">
-                  <a className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 w-full">
-                    {platform.icon}
-                    <span className="ml-3">{platform.label}</span>
-                  </a>
-                </Link>
-              </div>
-            ))}
+            {socialPlatforms.map((platform, index) => {
+              const isConnected = isPlatformConnected(platform.name);
+              const statusClass = isConnected ? "text-primary-600" : "text-gray-700";
+              const statusText = isConnected ? " (Connected)" : "";
+              
+              return (
+                <div key={index} className="w-full">
+                  <Link href={isConnected ? "/settings" : `/settings?connect=${platform.name}`}>
+                    <a className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass}`}>
+                      {platform.icon}
+                      <span className="ml-3">{platform.label}{statusText}</span>
+                    </a>
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -130,16 +178,22 @@ export default function Sidebar({ user }: SidebarProps) {
             Business Tools
           </h3>
           <div className="mt-2 space-y-1">
-            {businessTools.map((tool, index) => (
-              <div key={index} className="w-full">
-                <Link href="/settings">
-                  <a className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 w-full">
-                    {tool.icon}
-                    <span className="ml-3">{tool.label}</span>
-                  </a>
-                </Link>
-              </div>
-            ))}
+            {businessTools.map((tool, index) => {
+              const isConnected = isPlatformConnected(tool.name);
+              const statusClass = isConnected ? "text-primary-600" : "text-gray-700";
+              const statusText = isConnected ? " (Connected)" : "";
+              
+              return (
+                <div key={index} className="w-full">
+                  <Link href={isConnected ? "/settings" : `/settings?connect=${tool.name}`}>
+                    <a className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass}`}>
+                      {tool.icon}
+                      <span className="ml-3">{tool.label}{statusText}</span>
+                    </a>
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </nav>

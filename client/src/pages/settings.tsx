@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -62,10 +62,30 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
   const { setTheme, theme } = useTheme();
   
+  // Platform connect triggers
+  const [showPlatformConnect, setShowPlatformConnect] = useState<string | null>(null);
+  
   // Get connected platforms
   const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<Platform[]>({
     queryKey: ["/api/platforms"],
   });
+  
+  // Check URL for platform connection requests
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connectPlatform = params.get('connect');
+    
+    if (connectPlatform) {
+      // Set the active tab to platforms
+      setActiveTab("platforms");
+      
+      // Set the platform to connect
+      setShowPlatformConnect(connectPlatform);
+      
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
   
   // Form state
   const [profileForm, setProfileForm] = useState({
