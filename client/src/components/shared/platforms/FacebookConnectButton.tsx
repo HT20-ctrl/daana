@@ -21,11 +21,17 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fbConnected = params.get('fb_connected');
+    const fbError = params.get('fb_error');
+    const errorReason = params.get('error_reason');
+    const mockMode = params.get('mock');
     
     if (fbConnected === 'true') {
       toast({
         title: "Facebook connected!",
-        description: "Your Facebook account has been successfully connected.",
+        description: mockMode === 'true' 
+          ? "Your Facebook account has been connected in demo mode." 
+          : "Your Facebook account has been successfully connected.",
+        variant: "default"
       });
       
       // Refresh platforms data
@@ -37,6 +43,27 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
       if (onConnect) {
         onConnect();
       }
+    } 
+    else if (fbError === 'true') {
+      let errorMessage = "Could not connect to Facebook. Please try again.";
+      
+      // Provide more specific error messages based on the error reason
+      if (errorReason === 'token_exchange') {
+        errorMessage = "Authentication failed. Please try connecting again.";
+      } else if (errorReason === 'user_data') {
+        errorMessage = "Could not retrieve user information from Facebook.";
+      } else if (errorReason === 'session_expired') {
+        errorMessage = "Your session expired. Please try again.";
+      }
+      
+      toast({
+        title: "Connection failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [location, toast, onConnect]);
 
@@ -81,18 +108,14 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
     );
   }
 
-  // If Facebook API credentials are not configured, show a button that will prompt for credentials
+  // If Facebook API credentials are not configured, we'll use mock mode
+  // In a production environment, this would check if Facebook credentials are properly set up
   if (!isConfigured) {
     return (
       <Button 
         variant="outline" 
         className={`flex items-center gap-2 ${className}`}
-        onClick={() => {
-          toast({
-            title: "Facebook API credentials needed",
-            description: "Please provide Facebook API credentials to connect to Facebook.",
-          });
-        }}
+        onClick={handleConnect} // Use handle connect anyway which will set up a demo connection
       >
         <SiFacebook className="text-blue-600" />
         <span>Connect Facebook</span>

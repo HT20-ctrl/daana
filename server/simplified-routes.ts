@@ -6,7 +6,8 @@ import {
   facebookCallback, 
   getFacebookMessages,
   sendFacebookMessage,
-  isFacebookConfigured
+  isFacebookConfigured,
+  getFacebookStatus
 } from "./platforms/facebook";
 
 import {
@@ -138,42 +139,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Facebook Platform Integration
-  app.get("/api/platforms/facebook/status", async (req, res) => {
-    res.json({
-      configured: isFacebookConfigured(),
-      needsCredentials: !isFacebookConfigured()
-    });
-  });
+  app.get("/api/platforms/facebook/status", getFacebookStatus);
 
   app.get("/api/platforms/facebook/connect", async (req, res) => {
-    // For development purposes, create a mock platform since we don't have real credentials
-    if (!isFacebookConfigured()) {
-      try {
-        const userId = "1"; // Demo user ID
-        const platform = await storage.createPlatform({
-          userId,
-          name: "facebook",
-          displayName: "Facebook (Demo User)",
-          accessToken: "mock-access-token",
-          refreshToken: null,
-          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          isConnected: true
-        });
-        return res.redirect('/settings?fb_connected=true');
-      } catch (error) {
-        console.error("Error creating mock Facebook connection:", error);
-        return res.status(500).json({ error: "Failed to create mock connection" });
+    try {
+      // Setup session for the OAuth flow if it doesn't exist
+      if (!req.session) {
+        req.session = {};
       }
-    } else {
-      connectFacebook(req, res);
+
+      // If Facebook is configured with real credentials, use the OAuth flow
+      if (isFacebookConfigured()) {
+        return connectFacebook(req, res);
+      }
+      
+      // Otherwise for the demo, create a simulated connection
+      const userId = "1"; // Demo user ID
+      const platform = await storage.createPlatform({
+        userId,
+        name: "facebook",
+        displayName: "Facebook (Demo User)",
+        accessToken: "mock-access-token",
+        refreshToken: null,
+        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isConnected: true
+      });
+      
+      // Redirect back to the settings page with a success parameter
+      return res.redirect('/settings?fb_connected=true');
+    } catch (error) {
+      console.error("Error connecting to Facebook:", error);
+      return res.redirect('/settings?fb_error=true&error_reason=connection_failed');
     }
   });
 
   app.get("/api/platforms/facebook/callback", async (req, res) => {
-    if (!isFacebookConfigured()) {
-      res.redirect('/settings?fb_connected=true&mock=true');
-    } else {
-      facebookCallback(req, res);
+    // Setup session if it doesn't exist
+    if (!req.session) {
+      req.session = {};
+    }
+    
+    try {
+      if (isFacebookConfigured()) {
+        // With real credentials, process the OAuth callback
+        return facebookCallback(req, res);
+      } else {
+        // For demo purposes, create a simulated successful connection
+        res.redirect('/settings?fb_connected=true&mock=true');
+      }
+    } catch (error) {
+      console.error("Error handling Facebook callback:", error);
+      res.redirect('/settings?fb_error=true&error_reason=callback_error');
     }
   });
 
