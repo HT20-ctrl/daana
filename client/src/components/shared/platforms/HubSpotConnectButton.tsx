@@ -53,11 +53,16 @@ export default function HubSpotConnectButton() {
       // In a real implementation, this would redirect to HubSpot's OAuth flow
       // For our simplified implementation, we'll directly call the connect endpoint
       
-      const response = await apiRequest("/api/platforms/hubspot/connect", {
-        method: "POST"
+      const response = await fetch("/api/platforms/hubspot/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        }
       });
       
-      if (response.success) {
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         toast({
           title: "Success",
           description: "Connected to HubSpot successfully!",
@@ -68,7 +73,7 @@ export default function HubSpotConnectButton() {
       } else {
         toast({
           title: "Error",
-          description: response.error || "Failed to connect to HubSpot",
+          description: data.error || "Failed to connect to HubSpot",
           variant: "destructive"
         });
       }

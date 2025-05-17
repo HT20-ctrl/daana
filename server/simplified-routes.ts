@@ -43,6 +43,15 @@ import {
   getEmailStatus
 } from "./platforms/email";
 
+import {
+  connectHubSpot,
+  hubspotCallback,
+  getHubSpotContacts,
+  createHubSpotContact,
+  isHubSpotConfigured,
+  getHubSpotStatus
+} from "./platforms/hubspot";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -601,6 +610,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to send Email" });
     }
   });
+
+  // HubSpot platform routes
+  app.get("/api/platforms/hubspot/status", getHubSpotStatus);
+  app.post("/api/platforms/hubspot/connect", connectHubSpot);
+  app.get("/api/platforms/hubspot/callback", hubspotCallback);
+  app.get("/api/platforms/hubspot/contacts", getHubSpotContacts);
+  app.post("/api/platforms/hubspot/contacts", createHubSpotContact);
 
   return httpServer;
 }
