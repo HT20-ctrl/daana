@@ -8,12 +8,20 @@ import { useLocation } from "wouter";
 
 interface InstagramConnectButtonProps {
   onConnect?: () => void;
+  platform?: any; // Platform data if available from parent component
+  showDisconnect?: boolean; // Whether to show the disconnect button
   className?: string;
 }
 
-export default function InstagramConnectButton({ onConnect, className }: InstagramConnectButtonProps) {
+export default function InstagramConnectButton({ 
+  onConnect, 
+  platform, 
+  showDisconnect = false, 
+  className 
+}: InstagramConnectButtonProps) {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const { toast } = useToast();
   const [location] = useLocation();
 
@@ -40,19 +48,31 @@ export default function InstagramConnectButton({ onConnect, className }: Instagr
     }
   }, [location, toast, onConnect]);
 
-  // Check if Instagram API is configured on the backend
+  // State for tracking connection status
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Check if Instagram API is configured and connected on the backend
   useEffect(() => {
-    const checkInstagramConfig = async () => {
+    const checkInstagramStatus = async () => {
       try {
         const response = await apiRequest("GET", "/api/platforms/instagram/status");
-        setIsConfigured(response.configured);
+        setIsConfigured(!!response.configured);
+        setIsConnected(!!response.connected);
       } catch (error) {
         console.error("Error checking Instagram configuration:", error);
         setIsConfigured(false);
+        setIsConnected(false);
       }
     };
     
-    checkInstagramConfig();
+    // Check status when component mounts and when platforms change
+    checkInstagramStatus();
+    
+    // Set up polling to check status every 2 seconds to keep UI in sync
+    const statusInterval = setInterval(checkInstagramStatus, 2000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(statusInterval);
   }, []);
 
   const handleConnect = async () => {
@@ -71,12 +91,79 @@ export default function InstagramConnectButton({ onConnect, className }: Instagr
     }
   };
 
+  const handleDisconnect = async () => {
+    if (!platform?.id) {
+      console.error("Cannot disconnect Instagram: platform ID is missing");
+      return;
+    }
+    
+    setIsDisconnecting(true);
+    
+    try {
+      // Make DELETE request to the API endpoint
+      await apiRequest("DELETE", `/api/platforms/${platform.id}`);
+      
+      // Show success message
+      toast({
+        title: "Instagram disconnected",
+        description: "Your Instagram account has been successfully disconnected.",
+      });
+      
+      // Refresh platform data
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/status"] });
+      
+      setIsConnected(false);
+    } catch (error) {
+      console.error("Error disconnecting Instagram:", error);
+      toast({
+        title: "Disconnection failed",
+        description: "Failed to disconnect your Instagram account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
   // If we don't know if Instagram is configured yet, return a loading button
   if (isConfigured === null) {
     return (
       <Button variant="outline" className={`flex items-center gap-2 ${className}`} disabled>
         <SiInstagram className="text-pink-600" />
         <span>Checking...</span>
+      </Button>
+    );
+  }
+
+  // If Instagram is connected and we need to show the disconnect button
+  if (isConnected && showDisconnect) {
+    return (
+      <Button 
+        variant="outline" 
+        className={`flex items-center gap-2 bg-red-50 border-red-200 hover:bg-red-100 ${className}`}
+        onClick={handleDisconnect}
+        disabled={isDisconnecting}
+      >
+        <SiInstagram className="text-pink-600" />
+        <span>{isDisconnecting ? "Disconnecting..." : "Disconnect"}</span>
+      </Button>
+    );
+  }
+
+  // If Instagram is connected, show "Connected" status
+  if (isConnected) {
+    return (
+      <Button 
+        variant="outline" 
+        className={`flex items-center gap-2 bg-green-50 border-green-200 ${className}`}
+        disabled
+      >
+        <SiInstagram className="text-pink-600" />
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-green-500"></span>
+          Connected
+        </span>
       </Button>
     );
   }
@@ -90,7 +177,7 @@ export default function InstagramConnectButton({ onConnect, className }: Instagr
         onClick={() => {
           toast({
             title: "Instagram API credentials needed",
-            description: "Please provide Instagram API credentials to connect to Instagram.",
+            description: "Instagram requires Facebook API credentials to connect. Please provide FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.",
           });
         }}
       >
@@ -100,7 +187,7 @@ export default function InstagramConnectButton({ onConnect, className }: Instagr
     );
   }
 
-  // If Instagram API is configured, show a direct connect button
+  // If Instagram API is configured but not connected, show a connect button
   return (
     <Button 
       variant="outline" 

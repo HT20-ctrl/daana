@@ -548,23 +548,28 @@ export default function Settings() {
                           </Card>
                         )}
                         
-                        {/* Instagram Connect Button - only show if Instagram not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "instagram")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <SiInstagram className="h-5 w-5 text-pink-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">Instagram</p>
-                                    <p className="text-xs text-gray-500">Connect your business account</p>
-                                  </div>
+                        {/* Instagram - show either connect button or disconnect option */}
+                        <Card className="bg-gray-50 border">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <SiInstagram className="h-5 w-5 text-pink-600" />
+                                <div className="ml-3">
+                                  <p className="text-sm font-medium">Instagram</p>
+                                  <p className="text-xs text-gray-500">Connect your business account</p>
                                 </div>
-                                <InstagramConnectButton />
                               </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                              {Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "instagram") ? (
+                                <InstagramConnectButton 
+                                  platform={platforms.find(p => p?.name?.toLowerCase() === "instagram")}
+                                  showDisconnect={true}
+                                />
+                              ) : (
+                                <InstagramConnectButton />
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
                         
                         {/* WhatsApp Connect Button - only show if WhatsApp not already connected */}
                         {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "whatsapp")) && (
