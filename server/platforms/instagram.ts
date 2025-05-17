@@ -10,22 +10,60 @@ export function isInstagramConfigured(): boolean {
 
 // Connect to Instagram using OAuth
 export async function connectInstagram(req: Request, res: Response) {
-  if (!isInstagramConfigured()) {
-    return res.status(400).json({ 
-      message: "Instagram API credentials not configured. Please add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET to your environment variables." 
-    });
-  }
-
   try {
+    console.log("Instagram connect endpoint called");
+    
+    // Before connecting, we need to disconnect any existing Instagram connections
+    console.log("Setting all existing Instagram platforms to disconnected");
+    const userId = '1'; // Default demo user ID
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    
+    // Find any existing connected Instagram platforms and disconnect them
+    for (const platform of userPlatforms) {
+      if (platform.name === "instagram" && platform.isConnected) {
+        console.log(`Updating Instagram platform ID: ${platform.id} to disconnected`);
+        await storage.createPlatform({
+          ...platform,
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null
+        });
+      }
+    }
+    
+    // For development without credentials, use a mock connection flow
+    if (!isInstagramConfigured()) {
+      console.log("Using demo Instagram connection");
+      
+      // Create mock Instagram connection
+      console.log("Creating new Instagram connection for individual account");
+      await storage.createPlatform({
+        userId,
+        name: "instagram",
+        displayName: "Instagram - Business Account",
+        accessToken: "mock_instagram_token",
+        refreshToken: null,
+        tokenExpiry: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        isConnected: true
+      });
+      
+      // Redirect back to the settings page
+      return res.redirect('/settings?ig_connected=true&mock=true');
+    }
+
     // Generate random state for CSRF protection
     const state = crypto.randomBytes(16).toString("hex");
+    if (!req.session) {
+      req.session = {};
+    }
     req.session.instagramState = state;
+    await new Promise<void>((resolve) => req.session.save(() => resolve()));
 
     // Instagram (as part of Meta) uses the same OAuth flow as Facebook
     const redirectUri = `${req.protocol}://${req.hostname}/api/platforms/instagram/callback`;
     
     // Scope for Instagram includes instagram_basic, instagram_manage_comments, etc.
-    const scope = "instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_messaging";
+    const scope = "instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_messaging,public_profile";
     
     // Build the authorization URL
     const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${
@@ -34,6 +72,8 @@ export async function connectInstagram(req: Request, res: Response) {
       redirectUri
     )}&state=${state}&scope=${scope}&response_type=code`;
 
+    console.log(`Redirecting to Instagram auth URL: ${authUrl}`);
+    
     // Redirect the user to the Instagram authorization page
     res.redirect(authUrl);
   } catch (error) {

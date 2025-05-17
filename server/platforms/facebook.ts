@@ -53,22 +53,30 @@ export async function connectFacebook(req: Request, res: Response) {
   try {
     console.log("Facebook connect endpoint called");
     
+    // Before connecting, we need to disconnect any existing Facebook connections
+    console.log("Setting all existing Facebook platforms to disconnected");
+    const userId = '1'; // Default demo user ID
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    
+    // Find any existing connected Facebook platforms and disconnect them
+    for (const platform of userPlatforms) {
+      if (platform.name === "facebook" && platform.isConnected) {
+        console.log(`Updating Facebook platform ID: ${platform.id} to disconnected`);
+        await storage.createPlatform({
+          ...platform,
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null
+        });
+      }
+    }
+    
     // For development without credentials, use a mock connection flow
     if (!isFacebookConfigured()) {
       console.log("Using demo Facebook connection");
       
-      // First, check if Facebook is already connected
-      const userId = '1'; // Default demo user ID
-      const userPlatforms = await storage.getPlatformsByUserId(userId);
-      const existingFacebookPlatform = userPlatforms.find(p => p.name === "facebook" && p.isConnected);
-      
-      if (existingFacebookPlatform) {
-        console.log("Facebook already connected, refreshing connection");
-        // Redirect back to settings with success parameter
-        return res.redirect('/settings?fb_connected=true');
-      }
-      
       // Create mock Facebook connection
+      console.log("Creating new Facebook connection for individual account");
       await storage.createPlatform({
         userId,
         name: "facebook",
@@ -80,7 +88,7 @@ export async function connectFacebook(req: Request, res: Response) {
       });
       
       // Redirect back to the settings page
-      return res.redirect('/settings?fb_connected=true');
+      return res.redirect('/settings?fb_connected=true&mock=true');
     }
     
     // Regular OAuth flow for production with real credentials
@@ -102,7 +110,8 @@ export async function connectFacebook(req: Request, res: Response) {
     facebookAuthUrl.searchParams.append('client_id', FACEBOOK_APP_ID!);
     facebookAuthUrl.searchParams.append('redirect_uri', redirectUri);
     facebookAuthUrl.searchParams.append('state', state);
-    facebookAuthUrl.searchParams.append('scope', 'pages_messaging,pages_manage_metadata,pages_read_engagement,pages_show_list');
+    // Use appropriate scopes for Facebook Graph API
+    facebookAuthUrl.searchParams.append('scope', 'pages_messaging,pages_manage_metadata,pages_read_engagement,pages_show_list,public_profile,email');
     
     // Redirect user to Facebook OAuth page
     res.redirect(facebookAuthUrl.toString());
