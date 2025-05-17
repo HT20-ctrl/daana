@@ -589,79 +589,17 @@ export default function Settings() {
                           </Card>
                         )}
                         
-                        {/* Slack Connect Button - only show if Slack not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "slack")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <SiSlack className="h-5 w-5 text-purple-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">Slack</p>
-                                    <p className="text-xs text-gray-500">Connect your workspace</p>
-                                  </div>
-                                </div>
-                                <SlackConnectButton />
+                        {/* Add more platforms option */}
+                        <ConnectPlatformDialog trigger={
+                          <Card className="bg-gray-50 border border-dashed cursor-pointer hover:bg-gray-100 transition-colors">
+                            <CardContent className="p-4 flex flex-col items-center justify-center h-full">
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500">+</span>
                               </div>
+                              <p className="text-sm font-medium text-gray-500 mt-2">Add Platform</p>
                             </CardContent>
                           </Card>
-                        )}
-                        
-                        {/* Email Connect Button - only show if Email not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "email")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <Mail className="h-5 w-5 text-blue-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">Email</p>
-                                    <p className="text-xs text-gray-500">Connect email integration</p>
-                                  </div>
-                                </div>
-                                <EmailConnectButton />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-                        
-                        {/* HubSpot Connect Button - only show if HubSpot not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "hubspot")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <SiHubspot className="h-5 w-5 text-orange-600" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">HubSpot</p>
-                                    <p className="text-xs text-gray-500">Connect CRM integration</p>
-                                  </div>
-                                </div>
-                                <HubSpotConnectButton />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-                        
-                        {/* Salesforce Connect Button - only show if Salesforce not already connected */}
-                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "salesforce")) && (
-                          <Card className="bg-gray-50 border">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <svg className="h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M18.555 11.158c-.387-.753-.919-1.368-1.592-1.844a4.194 4.194 0 0 0-2.438-.729 4.164 4.164 0 0 0-4.15 3.749 3.2 3.2 0 0 0-2.342-.844 3.323 3.323 0 0 0-2.682 1.355A3.828 3.828 0 0 0 4.5 15.786a3.352 3.352 0 0 0 .627 1.962 3.373 3.373 0 0 0 1.66 1.323 3.29 3.29 0 0 0 1.99.105l.05-.011h6.894a.05.05 0 0 0 .036-.011 4.31 4.31 0 0 0 2.89-1.13 4.16 4.16 0 0 0 1.253-2.372c.136-.87.007-1.756-.345-2.494zm-1.049 4.157a2.894 2.894 0 0 1-1.961.784h-6.803a1.983 1.983 0 0 1-1.531-.727 1.998 1.998 0 0 1-.505-1.478 2.04 2.04 0 0 1 .536-1.399 1.97 1.97 0 0 1 1.345-.697 2.056 2.056 0 0 1 1.666.636c.094.093.181.192.26.298.095.124.27.173.419.118.149-.056.249-.197.246-.358a2.87 2.87 0 0 1 .847-2.093 2.865 2.865 0 0 1 1.983-.795 2.891 2.891 0 0 1 2.682 1.753c.337.702.425 1.488.257 2.241a2.888 2.888 0 0 1-.865 1.616.49.49 0 0 0-.084.662.478.478 0 0 0 .649.127c.27-.162.508-.369.71-.612.344-.428.578-.93.691-1.461.128-.595.096-1.216-.074-1.799" />
-                                  </svg>
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">Salesforce</p>
-                                    <p className="text-xs text-gray-500">Connect CRM integration</p>
-                                  </div>
-                                </div>
-                                <SalesforceConnectButton />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                        } />
                         
                         {/* Add more platforms option */}
                         <ConnectPlatformDialog trigger={
