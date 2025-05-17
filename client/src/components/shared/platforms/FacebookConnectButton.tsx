@@ -104,10 +104,12 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
   // If we don't know if Facebook is configured yet, return a loading button
   if (isConfigured === null) {
     return (
-      <Button variant="outline" className={`flex items-center gap-2 ${className}`} disabled>
-        <SiFacebook className="text-blue-600" />
-        <span>Checking...</span>
-      </Button>
+      <div id={connectButtonId}>
+        <Button variant="outline" className={`flex items-center gap-2 ${className}`} disabled>
+          <SiFacebook className="text-blue-600" />
+          <span>Checking...</span>
+        </Button>
+      </div>
     );
   }
 
@@ -115,27 +117,31 @@ export default function FacebookConnectButton({ onConnect, className }: Facebook
   // In a production environment, this would check if Facebook credentials are properly set up
   if (!isConfigured) {
     return (
-      <Button 
-        variant="outline" 
-        className={`flex items-center gap-2 ${className}`}
-        onClick={handleConnect} // Use handle connect anyway which will set up a demo connection
-      >
-        <SiFacebook className="text-blue-600" />
-        <span>Connect Facebook</span>
-      </Button>
+      <div id={connectButtonId}>
+        <Button 
+          variant="outline" 
+          className={`flex items-center gap-2 ${className}`}
+          onClick={handleConnect} // Use handle connect anyway which will set up a demo connection
+        >
+          <SiFacebook className="text-blue-600" />
+          <span>Connect Facebook</span>
+        </Button>
+      </div>
     );
   }
 
   // If Facebook API is configured, show a direct connect button
   return (
-    <Button 
-      variant="outline" 
-      className={`flex items-center gap-2 ${className}`}
-      onClick={handleConnect}
-      disabled={isLoading}
-    >
-      <SiFacebook className="text-blue-600" />
-      <span>{isLoading ? "Connecting..." : "Connect Facebook"}</span>
-    </Button>
+    <div id={connectButtonId}>
+      <Button 
+        variant="outline" 
+        className={`flex items-center gap-2 ${className}`}
+        onClick={handleConnect}
+        disabled={isLoading}
+      >
+        <SiFacebook className="text-blue-600" />
+        <span>{isLoading ? "Connecting..." : "Connect Facebook"}</span>
+      </Button>
+    </div>
   );
 }
