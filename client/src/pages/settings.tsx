@@ -36,6 +36,7 @@ import InstagramConnectButton from "@/components/shared/platforms/InstagramConne
 import WhatsAppConnectButton from "@/components/shared/platforms/WhatsAppConnectButton";
 import SlackConnectButton from "@/components/shared/platforms/SlackConnectButton";
 import EmailConnectButton from "@/components/shared/platforms/EmailConnectButton";
+import HubSpotConnectButton from "@/components/shared/platforms/HubSpotConnectButton";
 import { 
   UserCircle, 
   Bell, 
@@ -48,7 +49,8 @@ import {
   Trash2, 
   MessageSquare,
   CheckCircle,
-  XCircle
+  XCircle,
+  Mail
 } from "lucide-react";
 import { ThemeProvider, useTheme } from "next-themes";
 
@@ -528,6 +530,24 @@ export default function Settings() {
                                   </div>
                                 </div>
                                 <EmailConnectButton />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* HubSpot Connect Button - only show if HubSpot not already connected */}
+                        {!platforms?.some(p => p.name.toLowerCase() === "hubspot") && (
+                          <Card className="bg-gray-50 border">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <SiHubspot className="h-5 w-5 text-orange-600" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">HubSpot</p>
+                                    <p className="text-xs text-gray-500">Connect CRM integration</p>
+                                  </div>
+                                </div>
+                                <HubSpotConnectButton />
                               </div>
                             </CardContent>
                           </Card>
