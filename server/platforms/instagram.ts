@@ -84,68 +84,117 @@ export async function connectInstagram(req: Request, res: Response) {
 
 // Handle Instagram OAuth callback
 export async function instagramCallback(req: Request, res: Response) {
-  const { code, state } = req.query;
-  
-  // Validate state for CSRF protection
-  if (!state || state !== req.session.instagramState) {
-    return res.status(400).json({ message: "Invalid state parameter" });
-  }
-  
-  // Clean up session state
-  delete req.session.instagramState;
-  
-  if (!code) {
-    return res.redirect(`/?ig_connected=false`);
-  }
-  
   try {
-    const redirectUri = `${req.protocol}://${req.hostname}/api/platforms/instagram/callback`;
+    console.log("Instagram callback received");
+    const { code, state, error } = req.query;
     
-    // Exchange code for token
-    const tokenResponse = await fetch(
-      `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${
-        process.env.FACEBOOK_APP_ID
-      }&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&client_secret=${process.env.FACEBOOK_APP_SECRET}&code=${code}`,
-      { method: "GET" }
-    );
-    
-    const tokenData = await tokenResponse.json();
-    
-    if (!tokenData.access_token) {
-      throw new Error("Failed to obtain access token");
+    // Handle user cancellation or errors
+    if (error) {
+      console.error(`Instagram auth error: ${error}`);
+      return res.redirect('/settings?ig_error=true&error_reason=' + encodeURIComponent(String(error)));
     }
     
-    // Get user info to confirm Instagram connection
-    const userResponse = await fetch(
-      `https://graph.facebook.com/v18.0/me/accounts?access_token=${tokenData.access_token}`,
+    // Check for session
+    if (!req.session) {
+      return res.redirect('/settings?ig_error=true&error_reason=session_expired');
+    }
+    
+    // Validate state parameter to prevent CSRF attacks
+    const savedState = req.session.instagramState;
+    if (!state || state !== savedState) {
+      console.error("Invalid state parameter", { state, savedState });
+      return res.redirect('/settings?ig_error=true&error_reason=invalid_state');
+    }
+    
+    // Clean up session state
+    delete req.session.instagramState;
+    await new Promise<void>((resolve) => req.session!.save(() => resolve()));
+    
+    if (!code) {
+      return res.redirect('/settings?ig_error=true&error_reason=code_missing');
+    }
+    
+    // Prepare redirect URI - must match exactly what was used during authorization
+    const redirectUri = `${req.protocol}://${req.hostname}/api/platforms/instagram/callback`;
+    console.log(`Using redirect URI: ${redirectUri}`);
+    
+    // Exchange code for token
+    console.log("Exchanging authorization code for access token");
+    const tokenResponse = await fetch(
+      `https://graph.facebook.com/v18.0/oauth/access_token?` +
+      `client_id=${process.env.FACEBOOK_APP_ID}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `client_secret=${process.env.FACEBOOK_APP_SECRET}&` +
+      `code=${code}`,
       { method: "GET" }
     );
     
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error(`Failed to exchange code for token: ${errorText}`);
+      return res.redirect('/settings?ig_error=true&error_reason=token_exchange');
+    }
+    
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+    
+    if (!accessToken) {
+      console.error("No access token received from Instagram API");
+      return res.redirect('/settings?ig_error=true&error_reason=no_token');
+    }
+    
+    console.log("Successfully obtained Instagram access token");
+    
+    // Get user data to verify the connection
+    console.log("Fetching user account information from Instagram Graph API");
+    const userResponse = await fetch(
+      `https://graph.facebook.com/v18.0/me?fields=id,name,accounts,instagram_business_account&access_token=${accessToken}`,
+      { method: "GET" }
+    );
+    
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error(`Failed to fetch user data: ${errorText}`);
+      return res.redirect('/settings?ig_error=true&error_reason=user_data');
+    }
+    
     const userData = await userResponse.json();
+    console.log(`Retrieved user data for: ${userData.name || 'Unknown user'}`);
     
-    // Get user ID from authenticated user
-    const userId = req.user?.claims?.sub || "demo";
+    // Get a user ID from session or use demo ID
+    let userId = '1'; // Default demo user ID
     
-    // Create Instagram platform in database
-    await storage.createPlatform({
+    // If in a real auth environment, get from the request user
+    if (req.user && typeof req.user === 'object' && 'sub' in req.user) {
+      userId = String(req.user.sub);
+    } else if (req.user && typeof req.user === 'object' && 'id' in req.user) {
+      userId = String(req.user.id);
+    } else if (req.user && typeof req.user === 'object' && 'claims' in req.user) {
+      // @ts-ignore - Handle Replit Auth format
+      userId = req.user.claims.sub || userId;
+    }
+    
+    // Create a platform record for Instagram
+    console.log("Creating Instagram platform record in database");
+    const platform = await storage.createPlatform({
+      userId,
       name: "instagram",
-      displayName: "Instagram",
-      userId: userId,
-      accessToken: tokenData.access_token,
+      displayName: `Instagram (${userData.name || 'Business Account'})`,
+      accessToken,
       refreshToken: null,
       tokenExpiry: tokenData.expires_in 
         ? new Date(Date.now() + tokenData.expires_in * 1000) 
-        : null,
+        : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days default
       isConnected: true
     });
     
-    // Redirect back to the app with success parameter
-    res.redirect(`/?ig_connected=true`);
+    console.log(`Instagram platform created with ID: ${platform.id}`);
+    
+    // Redirect back to the settings page with success parameter
+    res.redirect('/settings?ig_connected=true');
   } catch (error) {
-    console.error("Error in Instagram callback:", error);
-    res.redirect(`/?ig_connected=false`);
+    console.error("Error handling Instagram OAuth callback:", error);
+    res.redirect('/settings?ig_error=true&error_reason=server_error');
   }
 }
 
