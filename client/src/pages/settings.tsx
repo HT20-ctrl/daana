@@ -512,7 +512,7 @@ export default function Settings() {
                         )}
                         
                         {/* Instagram Connect Button - only show if Instagram not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "instagram") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "instagram")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
@@ -530,7 +530,7 @@ export default function Settings() {
                         )}
                         
                         {/* WhatsApp Connect Button - only show if WhatsApp not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "whatsapp") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "whatsapp")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
@@ -548,7 +548,7 @@ export default function Settings() {
                         )}
                         
                         {/* Slack Connect Button - only show if Slack not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "slack") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "slack")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
@@ -566,7 +566,7 @@ export default function Settings() {
                         )}
                         
                         {/* Email Connect Button - only show if Email not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "email") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "email")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
@@ -584,7 +584,7 @@ export default function Settings() {
                         )}
                         
                         {/* HubSpot Connect Button - only show if HubSpot not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "hubspot") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "hubspot")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
@@ -602,7 +602,7 @@ export default function Settings() {
                         )}
                         
                         {/* Salesforce Connect Button - only show if Salesforce not already connected */}
-                        {!platforms?.some(p => p.name.toLowerCase() === "salesforce") && (
+                        {!(Array.isArray(platforms) && platforms.some(p => p?.name?.toLowerCase() === "salesforce")) && (
                           <Card className="bg-gray-50 border">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
