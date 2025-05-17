@@ -10,7 +10,34 @@ export function isSlackConfigured(): boolean {
 
 // Get Slack platform status
 export async function getSlackStatus(req: Request, res: Response) {
-  res.json({ configured: isSlackConfigured() });
+  try {
+    const isConfigured = isSlackConfigured();
+    
+    // Also check if user already has connected Slack
+    const userId = "1"; // Default demo user ID
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    const connectedSlack = userPlatforms.find(p => 
+      p.name === "slack" && 
+      p.isConnected && 
+      p.accessToken
+    );
+    
+    const isConnected = !!connectedSlack;
+    
+    res.json({
+      configured: isConfigured,
+      connected: isConnected,
+      needsCredentials: !isConfigured,
+      message: isConnected 
+        ? "Slack is connected" 
+        : isConfigured 
+          ? "Slack API is configured and ready to connect" 
+          : "Slack API credentials required"
+    });
+  } catch (error) {
+    console.error("Error checking Slack configuration:", error);
+    res.status(500).json({ error: "Failed to check Slack configuration" });
+  }
 }
 
 // Connect to Slack API
@@ -38,7 +65,7 @@ export async function connectSlack(req: Request, res: Response) {
     }
 
     // Get user ID from authenticated user
-    const userId = req.user?.claims?.sub || "demo";
+    const userId = req.user?.claims?.sub || "1";
     
     // Create Slack platform in database
     await storage.createPlatform({
@@ -73,7 +100,7 @@ export async function getSlackMessages(req: Request, res: Response) {
     
     // Get messages from the configured channel
     const result = await slack.conversations.history({
-      channel: process.env.SLACK_CHANNEL_ID,
+      channel: process.env.SLACK_CHANNEL_ID!,
       limit: 10
     });
     
