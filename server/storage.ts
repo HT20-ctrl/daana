@@ -148,22 +148,19 @@ export class MemStorage implements IStorage {
     if (platform) {
       console.log(`Disconnecting platform: ${platform.name} (ID: ${id})`);
       
-      // Completely delete the platform from the map
-      const result = this.platforms.delete(id);
+      // Instead of deleting the platform, just mark it as disconnected
+      // This ensures the platform entry remains visible in the UI
+      platform.isConnected = false;
+      platform.accessToken = null;
+      platform.refreshToken = null;
+      platform.tokenExpiry = null;
+      platform.updatedAt = new Date();
       
-      // Also remove any other platforms with the same name to avoid duplicates
-      const userId = platform.userId;
-      const allPlatforms = Array.from(this.platforms.values());
-      
-      for (const p of allPlatforms) {
-        if (p.userId === userId && p.name === platform.name && p.id !== id) {
-          console.log(`Also removing related platform ID: ${p.id}`);
-          this.platforms.delete(p.id);
-        }
-      }
+      // Update the platform in the map
+      this.platforms.set(id, platform);
       
       console.log(`Platform disconnected successfully: ${platform.name}`);
-      return result;
+      return true;
     }
     
     return false;
