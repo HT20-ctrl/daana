@@ -144,10 +144,8 @@ export default function Dashboard() {
     return "there";
   };
   
-  // Show skeleton loader while data is being fetched
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
+  // For now, let's remove the skeleton loading to fix the white screen issue
+  // We'll use the individual component loading states instead
 
   return (
     <>
