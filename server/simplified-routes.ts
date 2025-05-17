@@ -27,6 +27,14 @@ import {
   getWhatsAppStatus
 } from "./platforms/whatsapp";
 
+import {
+  connectSlack,
+  getSlackMessages,
+  sendSlackMessage,
+  isSlackConfigured,
+  getSlackStatus
+} from "./platforms/slack";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes - no auth required");
 
@@ -351,6 +359,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching WhatsApp messages:", error);
       res.status(500).json({ error: "Failed to fetch WhatsApp messages" });
+    }
+  });
+
+  // Slack Platform Integration
+  app.get("/api/platforms/slack/status", async (req, res) => {
+    res.json({
+      configured: isSlackConfigured(),
+      needsCredentials: !isSlackConfigured()
+    });
+  });
+
+  app.get("/api/platforms/slack/connect", async (req, res) => {
+    // For development purposes, create a mock platform since we don't have real credentials
+    if (!isSlackConfigured()) {
+      try {
+        const userId = "1"; // Demo user ID
+        const platform = await storage.createPlatform({
+          userId,
+          name: "slack",
+          displayName: "Slack Workspace (Demo User)",
+          accessToken: "mock-access-token",
+          refreshToken: null,
+          tokenExpiry: null, // Bot tokens don't expire
+          isConnected: true
+        });
+        return res.redirect('/settings?slack_connected=true');
+      } catch (error) {
+        console.error("Error creating mock Slack connection:", error);
+        return res.status(500).json({ error: "Failed to create mock connection" });
+      }
+    } else {
+      connectSlack(req, res);
+    }
+  });
+
+  app.get("/api/platforms/:platformId/slack/messages", async (req, res) => {
+    try {
+      const platformId = parseInt(req.params.platformId);
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      if (isSlackConfigured()) {
+        // Use real Slack API to get messages
+        return getSlackMessages(req, res);
+      }
+      
+      // Return mock Slack messages for demonstration
+      const mockMessages = [
+        {
+          id: "slack-msg-1",
+          senderId: "U012A345B",
+          senderName: "Ryan Johnson",
+          content: "Team meeting at 3pm today to discuss the new feature rollout",
+          timestamp: new Date(Date.now() - 7200000), // 2 hours ago
+          isRead: true
+        },
+        {
+          id: "slack-msg-2",
+          senderId: "U678C901D",
+          senderName: "Sophia Kim",
+          content: "The latest build is now available for testing. Please review by EOD.",
+          timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+          isRead: true
+        },
+        {
+          id: "slack-msg-3",
+          senderId: "U234E567F",
+          senderName: "Marcus Chen",
+          content: "Customer reported an issue with checkout flow. Can someone investigate?",
+          timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
+          isRead: false
+        }
+      ];
+      
+      res.json(mockMessages);
+    } catch (error) {
+      console.error("Error fetching Slack messages:", error);
+      res.status(500).json({ error: "Failed to fetch Slack messages" });
+    }
+  });
+
+  app.post("/api/platforms/:platformId/slack/messages", async (req, res) => {
+    try {
+      const { message } = req.body;
+      const platformId = parseInt(req.params.platformId);
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+      
+      const platform = await storage.getPlatformById(platformId);
+      
+      if (!platform) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      if (isSlackConfigured()) {
+        // Use real Slack API to send message
+        req.body = { message }; // Format for the actual handler
+        return sendSlackMessage(req, res);
+      }
+      
+      // Mock sending a message
+      res.json({ 
+        success: true, 
+        message: "Message sent successfully", 
+        messageId: `mock-${Date.now()}`
+      });
+    } catch (error) {
+      console.error("Error sending Slack message:", error);
+      res.status(500).json({ error: "Failed to send Slack message" });
     }
   });
 
