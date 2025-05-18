@@ -105,6 +105,7 @@ export default function KnowledgeBasePage() {
       fileType: selectedFile.type.includes('/') ? selectedFile.type.split('/')[1] : selectedFile.name.split('.').pop() || 'unknown',
       fileSize: selectedFile.size,
       content: `Content extracted from ${selectedFile.name}`,
+      filePath: `/uploads/${selectedFile.name}`, // Add the expected file path
       createdAt: new Date(),
       updatedAt: new Date()
     };

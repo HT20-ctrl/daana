@@ -508,8 +508,11 @@ export class MemStorage implements IStorage {
   async createMessage(messageData: InsertMessage): Promise<Message> {
     const id = this.messageId++;
     const message: Message = {
-      ...messageData,
       id,
+      conversationId: messageData.conversationId,
+      content: messageData.content,
+      isFromCustomer: messageData.isFromCustomer,
+      isAiGenerated: messageData.isAiGenerated ?? null,
       createdAt: new Date(),
     };
     

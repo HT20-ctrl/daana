@@ -24,7 +24,8 @@ export async function getFacebookStatus(req: Request, res: Response) {
     const isConfigured = isFacebookConfigured();
     
     // Get user ID from auth or use demo user
-    const userId = req?.user?.claims?.sub || "1"; // Default demo user ID
+    // Access user ID safely without depending on claims property
+    const userId = (req.user as any)?.claims?.sub || "1"; // Default demo user ID
     
     // Find connected Facebook platforms
     const platforms = await findFacebookPlatforms(userId);

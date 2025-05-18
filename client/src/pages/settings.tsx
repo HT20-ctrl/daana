@@ -94,16 +94,16 @@ export default function Settings() {
   }, []);
   
   // Form state
-  const [profileForm, setProfileForm] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    email: user?.email || "",
-    role: user?.role || "User"
-  } as {
+  const [profileForm, setProfileForm] = useState<{
     firstName: string;
     lastName: string;
     email: string;
     role: string;
+  }>({
+    firstName: user?.firstName ?? "",
+    lastName: user?.lastName ?? "",
+    email: user?.email ?? "",
+    role: user?.role ?? "User"
   });
   
   // AI Settings state

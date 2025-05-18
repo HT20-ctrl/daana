@@ -132,13 +132,13 @@ export default function Analytics() {
       // Generate PDF with analytics data
       exportAnalyticsToPdf(
         analytics || {
-          id: 0,
-          userId: '',
+          id: 1,
+          userId: '1',
           date: null,
-          totalMessages: 0,
-          aiResponses: 0,
-          manualResponses: 0,
-          sentimentScore: 0
+          totalMessages: null,
+          aiResponses: null,
+          manualResponses: null,
+          sentimentScore: null
         }, 
         conversations, 
         platforms,
