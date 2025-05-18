@@ -91,10 +91,9 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     // Construct the OAuth URL with the real client ID
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     
-    // Create a dynamic redirect URI based on the request, which should work with any domain
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.headers.host || req.hostname;
-    const redirectUri = `${protocol}://${host}/api/platforms/email/google/callback`;
+    // Use the exact Replit domain for the redirect URI
+    // This must match what's configured in Google Cloud Console
+    const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
     
     // Define the scopes we need - simplified to basic profile access
     const scopes = [
