@@ -6,15 +6,15 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero section with nav */}
-      <div className="relative bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-900 text-white overflow-hidden">
+      <div className="relative bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 text-white overflow-hidden">
         {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-800/50 via-blue-600/40 to-indigo-900/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-950/80 via-blue-900/70 to-indigo-950/80"></div>
         <div className="absolute inset-0 backdrop-blur-[120px] bg-grid-white/[0.05] bg-[length:20px_20px]"></div>
         
         {/* Animated gradient circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-blue-400 to-blue-700 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute top-1/3 right-0 w-80 h-80 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-cyan-500 to-blue-700 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute top-1/3 right-0 w-80 h-80 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full filter blur-3xl opacity-25 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Navigation */}
@@ -332,7 +332,7 @@ export default function LandingPage() {
 
       {/* CTA section */}
       <section className="py-28 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-indigo-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-950 to-indigo-950"></div>
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:20px_20px]"></div>
         
         {/* Animated blobs */}
