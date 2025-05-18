@@ -6,26 +6,26 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero section with nav */}
-      <div className="relative bg-gradient-to-br from-purple-700 via-violet-800 to-indigo-900 text-white overflow-hidden">
+      <div className="relative bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-900 text-white overflow-hidden">
         {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-700/40 via-pink-600/30 to-indigo-900/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-800/50 via-blue-600/40 to-indigo-900/50"></div>
         <div className="absolute inset-0 backdrop-blur-[120px] bg-grid-white/[0.05] bg-[length:20px_20px]"></div>
         
         {/* Animated gradient circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute top-1/3 right-0 w-80 h-80 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-blue-400 to-blue-700 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute top-1/3 right-0 w-80 h-80 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-cyan-500 to-blue-700 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Navigation */}
           <div className="relative z-10 flex items-center justify-between px-6 py-5 lg:px-8">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500 p-[2px] overflow-hidden group">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 p-[2px] overflow-hidden group">
                 <div className="w-full h-full rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center transition group-hover:bg-white/5">
                   <span className="text-white font-bold text-xl">D</span>
                 </div>
               </div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-white via-cyan-100 to-indigo-100 bg-clip-text text-transparent">Dana AI</span>
+              <span className="font-bold text-2xl bg-gradient-to-r from-white via-cyan-100 to-blue-100 bg-clip-text text-transparent">Dana AI</span>
             </div>
             
             <div className="flex items-center gap-6">
@@ -41,14 +41,14 @@ export default function LandingPage() {
                 className="text-sm font-medium relative overflow-hidden group"
               >
                 <span className="relative z-10 text-white group-hover:text-white transition-colors duration-300">Sign in</span>
-                <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-blue-400 to-pink-500 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
               </a>
               
               <a 
                 href="/api/login"
                 className="relative overflow-hidden group bg-white/10 backdrop-blur-xl text-white border border-white/20 rounded-full px-5 py-2.5 text-sm font-medium hover:bg-white/20 hover:border-white/30 transition-all duration-300"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full blur"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full blur"></div>
                 <span className="relative z-10">Get Started</span>
               </a>
             </div>
