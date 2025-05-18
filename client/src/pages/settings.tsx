@@ -182,8 +182,18 @@ export default function Settings() {
         description: 'Please wait a moment',
       });
       
-      // Use the disconnect endpoint
-      await apiRequest("POST", `/api/platforms/${platformId}/disconnect`);
+      // Use platform-specific disconnect endpoints when available
+      if (platformType === "facebook") {
+        console.log("Using Facebook-specific disconnect endpoint");
+        await apiRequest("POST", `/api/platforms/facebook/disconnect`);
+      } else if (platformType === "instagram") {
+        console.log("Using Instagram-specific disconnect endpoint");
+        await apiRequest("POST", `/api/platforms/instagram/disconnect`);
+      } else {
+        // Fall back to generic endpoint for other platforms
+        console.log(`Using generic disconnect for platform ${platformType}`);
+        await apiRequest("POST", `/api/platforms/${platformId}/disconnect`);
+      }
       
       // Force immediate refetch to update UI
       await refetchPlatforms();
