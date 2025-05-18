@@ -98,7 +98,7 @@ function AuthRouter() {
       <Route path="/landing">
         <LandingPage />
       </Route>
-      <Route path="/" exact>
+      <Route path="/">
         <LandingPage />
       </Route>
       <Route path="/signin">
