@@ -23,6 +23,7 @@ import NotFound from "@/pages/not-found";
 import GoogleAuthPage from "@/pages/google-auth";
 import LandingPage from "@/pages/landing";
 import SignInPage from "@/pages/signin";
+import ConversationDetail from "@/pages/conversation-detail";
 
 // Auth loading screen
 function LoadingScreen() {
@@ -67,6 +68,9 @@ function MainApp() {
         <Header user={currentUser} />
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
           <Switch>
+            <Route path="/app/conversations/:id">
+              <ConversationDetail />
+            </Route>
             <Route path="/app/conversations">
               <Conversations />
             </Route>

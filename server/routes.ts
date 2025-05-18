@@ -134,11 +134,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Conversation not found" });
       }
       
-      const messages = await storage.getMessagesByConversationId(conversationId);
-      res.json({ conversation, messages });
+      res.json(conversation);
     } catch (error) {
       console.error("Error fetching conversation:", error);
       res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+  
+  // Get messages for a specific conversation
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      
+      // First check if the conversation exists and belongs to the user
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const messages = await storage.getMessagesByConversationId(conversationId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  
+  // Add a new message to a conversation
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      
+      // First check if the conversation exists and belongs to the user
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Create the new message
+      const messageData = {
+        ...req.body,
+        conversationId
+      };
+      
+      const message = await storage.createMessage(messageData);
+      
+      // If this is a staff reply (not from customer), update analytics
+      if (!messageData.isFromCustomer) {
+        if (messageData.isAiGenerated) {
+          await storage.incrementAiResponses(userId);
+        } else {
+          await storage.incrementManualResponses(userId);
+        }
+      }
+      
+      // Notify any other connected clients
+      storeMessageForPolling(userId, { type: "NEW_MESSAGE", payload: message });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to create message" });
     }
   });
 
