@@ -338,7 +338,11 @@ export default function KnowledgeBasePage() {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => window.open(`/api/knowledge-base/download/${item.id}`, '_blank')}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                           <AlertDialog>

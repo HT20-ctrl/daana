@@ -236,6 +236,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download knowledge base file
+  app.get("/api/knowledge-base/download/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const fileId = parseInt(req.params.id);
+      
+      // Get the file info from the database
+      const file = await storage.getKnowledgeBaseById(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Verify the file belongs to the user
+      if (file.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Use the actual file path from the uploads directory
+      const filePath = `uploads/${file.fileName.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
+      
+      // Log the file path for debugging
+      console.log("Trying to download file from path:", filePath);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error("File not found at path:", filePath);
+        return res.status(404).json({ message: "File not found on server" });
+      }
+      
+      // Set the appropriate content type
+      res.setHeader('Content-Type', file.fileType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+      
+      // Send the file
+      return res.download(filePath);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      return res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
   app.post("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
     // Handle file upload with error handling
     upload.single("file")(req, res, async (err) => {
@@ -286,15 +328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: content || null
         });
         
-        // Clean up temp file
-        try {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        } catch (cleanupError) {
-          console.error("Error cleaning up temp file:", cleanupError);
-          // Continue anyway as this is not critical
-        }
+        // We'll keep the file for download functionality instead of deleting it
+        // Store the file path in the database
+        knowledgeBaseEntry.filePath = file.path;
         
         // Return the created knowledge base entry
         return res.status(200).json(knowledgeBaseEntry);
