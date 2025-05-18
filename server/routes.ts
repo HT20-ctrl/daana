@@ -265,19 +265,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Get file type
-        let fileType = "txt";
+        let fileType;
         if (file.mimetype === "application/pdf") {
           fileType = "pdf";
         } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
           fileType = "docx";
+        } else if (file.mimetype === "text/plain") {
+          fileType = "txt";  
+        } else {
+          // Extract extension from the file name as a fallback
+          const nameParts = file.originalname.split('.');
+          fileType = nameParts.length > 1 ? nameParts[nameParts.length - 1].toLowerCase() : "unknown";
         }
         
         const knowledgeBaseEntry = await storage.createKnowledgeBase({
           userId,
           fileName: file.originalname,
-          fileType,
+          fileType, // Using the simplified file type (pdf, docx, txt)
           fileSize: file.size,
-          content
+          content: content || null
         });
         
         // Clean up temp file
@@ -290,12 +296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue anyway as this is not critical
         }
         
-        // Send a simple success response, avoid complex objects that might cause JSON parsing issues
-        res.status(200).send({ 
-          success: true, 
-          id: knowledgeBaseEntry.id,
-          fileName: knowledgeBaseEntry.fileName
-        });
+        // Return the created knowledge base entry
+        return res.status(200).json(knowledgeBaseEntry);
       } catch (error) {
         console.error("Error uploading knowledge base file:", error);
         res.status(500).json({ message: "Failed to upload knowledge base file" });
