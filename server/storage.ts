@@ -267,6 +267,7 @@ export class MemStorage implements IStorage {
       fileType: "application/pdf",
       fileSize: 245000,
       content: "Our return policy allows customers to return items within 30 days of purchase for a full refund...",
+      filePath: "/uploads/Return_Policy.pdf",
       createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     };
@@ -279,6 +280,7 @@ export class MemStorage implements IStorage {
       fileType: "application/pdf",
       fileSize: 180000,
       content: "Standard shipping typically takes 3-5 business days. Express shipping is available for an additional fee...",
+      filePath: "/uploads/Shipping_Information.pdf",
       createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
       updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
     };
@@ -317,7 +319,12 @@ export class MemStorage implements IStorage {
     const existingUser = await this.getUser(userData.id);
     
     const user: User = {
-      ...userData,
+      id: userData.id,
+      email: userData.email ?? existingUser?.email ?? null,
+      firstName: userData.firstName ?? existingUser?.firstName ?? null,
+      lastName: userData.lastName ?? existingUser?.lastName ?? null,
+      profileImageUrl: userData.profileImageUrl ?? existingUser?.profileImageUrl ?? null,
+      role: userData.role ?? existingUser?.role ?? "user",
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
@@ -534,9 +541,12 @@ export class MemStorage implements IStorage {
 
   async createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase> {
     const id = this.knowledgeBaseId++;
+    // Ensure all required fields are present with proper types
     const kb: KnowledgeBase = {
       ...knowledgeBaseItem,
       id,
+      content: knowledgeBaseItem.content || null,
+      filePath: knowledgeBaseItem.filePath || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
