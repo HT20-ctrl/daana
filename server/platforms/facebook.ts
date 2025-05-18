@@ -22,11 +22,18 @@ export async function getFacebookStatus(req: Request, res: Response) {
     const isConfigured = isFacebookConfigured();
     
     // Also check if user already has connected Facebook
-    const userId = "1"; // Default demo user ID
+    const userId = req?.user?.claims?.sub || "1"; // Default demo user ID
     const userPlatforms = await storage.getPlatformsByUserId(userId);
     
-    // Log platforms for debugging
-    console.log("User Facebook platforms:", userPlatforms.filter(p => p.name === "facebook"));
+    // Log platforms for debugging, but filter sensitive info
+    const fbPlatforms = userPlatforms.filter(p => p.name === "facebook").map(p => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName,
+      isConnected: p.isConnected,
+      hasAccessToken: !!p.accessToken
+    }));
+    console.log("User Facebook platforms:", fbPlatforms);
     
     const connectedFacebook = userPlatforms.find(p => 
       p.name === "facebook" && 

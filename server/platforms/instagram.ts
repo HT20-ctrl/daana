@@ -278,7 +278,17 @@ export async function getInstagramStatus(req: Request, res: Response) {
     const userId = req.user?.claims?.sub || "1"; // Default to demo user if no auth
     const userPlatforms = await storage.getPlatformsByUserId(userId);
     
-    // Find connected Instagram platforms
+    // Log platforms for debugging, but filter sensitive info
+    const igPlatforms = userPlatforms.filter(p => p.name === "instagram").map(p => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName,
+      isConnected: p.isConnected,
+      hasAccessToken: !!p.accessToken
+    }));
+    console.log("User Instagram platforms:", igPlatforms);
+    
+    // Find connected Instagram platforms - strict check for isConnected true
     const connectedInstagram = userPlatforms.find(p => 
       p.name === "instagram" && 
       p.isConnected === true
