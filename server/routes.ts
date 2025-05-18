@@ -200,6 +200,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate AI response for a conversation
+  app.post("/api/conversations/:id/ai-response", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      
+      // Get the conversation
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Get all messages in the conversation
+      const messages = await storage.getMessagesByConversationId(conversationId);
+      
+      // Get the latest message from the customer
+      const latestCustomerMessage = [...messages]
+        .filter(m => m.isFromCustomer)
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+      
+      if (!latestCustomerMessage) {
+        return res.status(400).json({ message: "No customer messages found to respond to" });
+      }
+      
+      // Get knowledge base for context
+      const knowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
+      
+      // Generate AI response
+      const aiResponse = await generateAIResponse(latestCustomerMessage.content, messages, knowledgeBase);
+      
+      // Save AI response
+      const responseMessage = await storage.createMessage({
+        conversationId,
+        content: aiResponse,
+        isFromCustomer: false,
+        isAiGenerated: true
+      });
+      
+      // Update analytics
+      await storage.incrementAiResponses(userId);
+      
+      // Store response for polling instead of WebSocket
+      storeMessageForPolling(userId, { type: "NEW_AI_RESPONSE", payload: responseMessage });
+      
+      res.json({ message: responseMessage });
+    } catch (error) {
+      console.error("Error generating AI response:", error);
+      res.status(500).json({ message: "Failed to generate AI response" });
+    }
+  });
+  
   app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
