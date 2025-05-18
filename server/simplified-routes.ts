@@ -45,7 +45,8 @@ import {
   getEmailMessages,
   sendEmailMessage,
   isEmailConfigured,
-  getEmailStatus
+  getEmailStatus,
+  googleOAuthCallback
 } from "./platforms/email";
 
 import {
@@ -742,6 +743,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Always use the real connect function which will handle Google OAuth
     connectEmail(req, res);
   });
+  
+  // Google OAuth callback route
+  app.get("/api/platforms/email/google/callback", googleOAuthCallback);
 
   app.get("/api/platforms/:platformId/email/messages", async (req, res) => {
     try {
