@@ -55,7 +55,7 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!selectedFile) {
       toast({
         title: "No file selected",
@@ -83,65 +83,65 @@ export default function KnowledgeBasePage() {
 
     setIsUploading(true);
 
-    try {
-      // Create a new FormData instance
-      const formData = new FormData();
-      
-      // Append the file with the field name that matches what the server expects
-      formData.append("file", selectedFile);
-      
-      console.log("Uploading file:", selectedFile.name, "Size:", selectedFile.size, "Type:", selectedFile.type);
+    // Create a new FormData instance
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    
+    console.log("Uploading file:", selectedFile.name, "Size:", selectedFile.size, "Type:", selectedFile.type);
 
-      // Send the file to the server
-      const response = await fetch("/api/knowledge-base", {
-        method: "POST",
-        body: formData,
-        // Don't set Content-Type header - the browser will set it with the boundary
-        credentials: "include"
-      });
+    // Use XMLHttpRequest instead of fetch for more reliable file upload
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/knowledge-base", true);
+    
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        // Success
+        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
+        
+        toast({
+          title: "Upload successful",
+          description: "The file has been added to your knowledge base",
+          variant: "default"
+        });
 
-      // Check if there was a network error
-      if (!response) {
-        throw new Error("Network error occurred during upload");
+        setSelectedFile(null);
+        // Reset the file input
+        const fileInput = document.getElementById("fileUpload") as HTMLInputElement;
+        if (fileInput) fileInput.value = "";
+      } else {
+        // Error
+        console.error("Upload failed:", xhr.status, xhr.statusText);
+        toast({
+          title: "Upload failed",
+          description: `Server returned error: ${xhr.status} ${xhr.statusText}`,
+          variant: "destructive"
+        });
       }
-      
-      // Check if the response is ok before trying to parse JSON
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "Unknown error");
-        throw new Error(`Upload failed (${response.status}): ${errorText}`);
-      }
-      
-      // Success response handling
-      try {
-        const responseData = await response.json();
-        console.log("Upload successful:", responseData);
-      } catch (parseError) {
-        // Even if JSON parsing fails, if the status was 200, we consider it a success
-        console.log("Upload appears successful despite JSON parsing issues");
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
-      
-      toast({
-        title: "Upload successful",
-        description: "The file has been added to your knowledge base",
-        variant: "default"
-      });
-
-      setSelectedFile(null);
-      // Reset the file input
-      const fileInput = document.getElementById("fileUpload") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
-    } catch (error) {
-      console.error("Error uploading file:", error);
+      setIsUploading(false);
+    };
+    
+    xhr.onerror = function() {
+      console.error("Network error during upload");
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: "Network error occurred during upload",
         variant: "destructive"
       });
-    } finally {
       setIsUploading(false);
-    }
+    };
+    
+    xhr.onabort = function() {
+      console.error("Upload aborted");
+      toast({
+        title: "Upload aborted",
+        description: "The file upload was aborted",
+        variant: "destructive"
+      });
+      setIsUploading(false);
+    };
+    
+    // Send the form data
+    xhr.send(formData);
   };
 
   // Helper function to get file icon based on type
