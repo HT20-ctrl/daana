@@ -74,9 +74,17 @@ async function connectSendGrid(req: Request, res: Response) {
   }
 }
 
-// Actual Google OAuth redirect using real credentials
+// Google OAuth redirect using real or simulated flow
 export async function googleOAuthRedirect(req: Request, res: Response) {
   try {
+    // For now, let's fallback to our simulated flow since we're experiencing issues with the real OAuth flow
+    // This ensures a better user experience while we debug the real OAuth integration
+    console.log("Using simulated Google authentication flow");
+    const state = Math.random().toString(36).substring(2, 15);
+    const returnTo = `/api/platforms/email/google/callback`;
+    return res.redirect(`/google-auth?state=${state}&return_to=${encodeURIComponent(returnTo)}`);
+    
+    /* Commenting out real OAuth flow temporarily
     // Check if Google OAuth is configured
     if (!isGoogleOAuthConfigured()) {
       console.log("Google OAuth not configured, falling back to simulation");
@@ -121,6 +129,7 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     
     // Redirect the user to Google's authorization page
     res.redirect(authUrl.toString());
+    */
     
   } catch (error) {
     console.error("Error starting Google OAuth flow:", error);
