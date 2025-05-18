@@ -10,7 +10,28 @@ export function isSlackConfigured(): boolean {
 
 // Get Slack platform status
 export async function getSlackStatus(req: Request, res: Response) {
-  res.json({ configured: isSlackConfigured() });
+  try {
+    // Check if Slack is configured
+    const configured = isSlackConfigured();
+
+    // If Slack is configured, also check if it's already connected for this user
+    if (configured) {
+      const userId = req.user?.id || "1"; // Use demo user ID if not authenticated
+      const platforms = await storage.getPlatformsByUserId(userId);
+      const slackPlatform = platforms.find(p => p.name === "slack");
+      
+      return res.json({ 
+        configured: true, 
+        connected: !!slackPlatform?.isConnected,
+        platformId: slackPlatform?.id
+      });
+    }
+    
+    res.json({ configured, connected: false });
+  } catch (error) {
+    console.error("Error checking Slack status:", error);
+    res.status(500).json({ message: "Failed to check Slack status" });
+  }
 }
 
 // Connect to Slack API
@@ -22,12 +43,8 @@ export async function connectSlack(req: Request, res: Response) {
   }
 
   try {
-    // Generate random state for CSRF protection
-    const state = crypto.randomBytes(16).toString("hex");
-    req.session.slackState = state;
-
-    // In a real implementation, this would redirect to Slack OAuth flow
-    // Since we're using Bot tokens directly, we would just verify the token works
+    // In a real implementation, we would use OAuth flow
+    // For this demo, we'll directly validate the bot token
     const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
     
     // Test connection by getting info about the bot
@@ -37,22 +54,35 @@ export async function connectSlack(req: Request, res: Response) {
       throw new Error("Slack API token validation failed");
     }
 
-    // Get user ID from authenticated user
-    const userId = req.user?.claims?.sub || "demo";
+    // Get user ID from the session or use demo user
+    const userId = req.user?.id || "1";
     
-    // Create Slack platform in database
-    await storage.createPlatform({
-      name: "slack",
-      displayName: `Slack (${botInfo.team})`,
-      userId: userId,
-      accessToken: process.env.SLACK_BOT_TOKEN,
-      refreshToken: null,
-      tokenExpiry: null, // Bot tokens don't expire
-      isConnected: true
-    });
+    // Check if this Slack account is already connected
+    const platforms = await storage.getPlatformsByUserId(userId);
+    const existingSlack = platforms.find(p => p.name === "slack");
     
-    // Redirect back to the app with success parameter
-    res.redirect(`/?slack_connected=true`);
+    if (existingSlack) {
+      // Update existing platform connection
+      await storage.updatePlatform(existingSlack.id, {
+        displayName: `Slack (${botInfo.team})`,
+        accessToken: process.env.SLACK_BOT_TOKEN as string,
+        isConnected: true
+      });
+    } else {
+      // Create new Slack platform in database
+      await storage.createPlatform({
+        name: "slack",
+        displayName: `Slack (${botInfo.team})`,
+        userId: userId,
+        accessToken: process.env.SLACK_BOT_TOKEN as string,
+        refreshToken: null,
+        tokenExpiry: null, // Bot tokens don't expire
+        isConnected: true
+      });
+    }
+    
+    // Redirect back to the settings page with success parameter
+    res.redirect(`/settings?slack_connected=true`);
   } catch (error) {
     console.error("Error connecting to Slack:", error);
     res.status(500).json({ message: "Failed to connect to Slack" });

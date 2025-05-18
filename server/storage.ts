@@ -29,6 +29,7 @@ export interface IStorage {
   getPlatformsByUserId(userId: string): Promise<Platform[]>;
   getPlatformById(id: number): Promise<Platform | undefined>;
   createPlatform(platform: InsertPlatform): Promise<Platform>;
+  updatePlatform(id: number, platformData: Partial<InsertPlatform>): Promise<Platform>;
   deletePlatform(id: number): Promise<boolean>; // Add delete platform functionality
   
   // Conversation operations
@@ -360,6 +361,23 @@ export class MemStorage implements IStorage {
     
     this.platforms.set(id, platform);
     return platform;
+  }
+  
+  async updatePlatform(id: number, platformData: Partial<InsertPlatform>): Promise<Platform> {
+    const platform = this.platforms.get(id);
+    if (!platform) {
+      throw new Error(`Platform with ID ${id} not found`);
+    }
+    
+    // Update the platform with new data
+    const updatedPlatform: Platform = {
+      ...platform,
+      ...platformData,
+      updatedAt: new Date()
+    };
+    
+    this.platforms.set(id, updatedPlatform);
+    return updatedPlatform;
   }
   
   async deletePlatform(id: number): Promise<boolean> {

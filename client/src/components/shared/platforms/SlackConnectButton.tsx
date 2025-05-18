@@ -5,6 +5,7 @@ import { SiSlack } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 interface SlackConnectButtonProps {
   onConnect?: () => void;
@@ -12,7 +13,11 @@ interface SlackConnectButtonProps {
 }
 
 export default function SlackConnectButton({ onConnect, className }: SlackConnectButtonProps) {
-  const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    platformId?: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [location] = useLocation();
@@ -28,8 +33,9 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
         description: "Your Slack workspace has been successfully connected.",
       });
       
-      // Refresh platforms data
+      // Refresh platforms data and refetch status
       queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      checkSlackStatus();
       
       // Clean up URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -40,19 +46,24 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
     }
   }, [location, toast, onConnect]);
 
-  // Check if Slack API is configured on the backend
+  // Check Slack API configuration and connection status
+  const checkSlackStatus = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/platforms/slack/status");
+      setStatus({
+        configured: response.configured || false,
+        connected: response.connected || false,
+        platformId: response.platformId
+      });
+    } catch (error) {
+      console.error("Error checking Slack configuration:", error);
+      setStatus({ configured: false, connected: false });
+    }
+  };
+
+  // Initial status check
   useEffect(() => {
-    const checkSlackConfig = async () => {
-      try {
-        const response = await apiRequest("GET", "/api/platforms/slack/status");
-        setIsConfigured(response.configured);
-      } catch (error) {
-        console.error("Error checking Slack configuration:", error);
-        setIsConfigured(false);
-      }
-    };
-    
-    checkSlackConfig();
+    checkSlackStatus();
   }, []);
 
   const handleConnect = async () => {
@@ -71,8 +82,35 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
     }
   };
 
-  // If we don't know if Slack is configured yet, return a loading button
-  if (isConfigured === null) {
+  const handleDisconnect = async () => {
+    if (!status?.platformId) return;
+    
+    setIsLoading(true);
+    try {
+      await apiRequest("DELETE", `/api/platforms/${status.platformId}`);
+      
+      toast({
+        title: "Slack disconnected",
+        description: "Your Slack workspace has been disconnected.",
+      });
+      
+      // Refresh platforms data and status
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      await checkSlackStatus();
+    } catch (error) {
+      console.error("Error disconnecting Slack:", error);
+      toast({
+        title: "Disconnection failed",
+        description: "Could not disconnect from Slack. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // If we don't know the status yet, return a loading button
+  if (status === null) {
     return (
       <Button variant="outline" className={`flex items-center gap-2 ${className}`} disabled>
         <SiSlack className="text-purple-600" />
@@ -81,8 +119,24 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
     );
   }
 
+  // If already connected to Slack, show disconnect button
+  if (status.connected) {
+    return (
+      <Button 
+        variant="outline" 
+        className={`flex items-center gap-2 ${className}`}
+        onClick={handleDisconnect}
+        disabled={isLoading}
+      >
+        <SiSlack className="text-purple-600" />
+        <CheckCircle2 className="w-4 h-4 text-green-500 mr-1" />
+        <span>{isLoading ? "Disconnecting..." : "Slack Connected"}</span>
+      </Button>
+    );
+  }
+
   // If Slack API credentials are not configured, show a button that will prompt for credentials
-  if (!isConfigured) {
+  if (!status.configured) {
     return (
       <Button 
         variant="outline" 
@@ -95,12 +149,13 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
         }}
       >
         <SiSlack className="text-purple-600" />
-        <span>Connect Slack</span>
+        <XCircle className="w-4 h-4 text-red-500 mr-1" />
+        <span>Configure Slack</span>
       </Button>
     );
   }
 
-  // If Slack API is configured, show a direct connect button
+  // If Slack API is configured but not connected, show connect button
   return (
     <Button 
       variant="outline" 
