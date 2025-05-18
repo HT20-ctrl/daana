@@ -283,6 +283,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Testimonials section */}
+      <Testimonials />
+      
       {/* How it works section */}
       <section id="how-it-works" className="py-24 px-6 bg-gradient-to-br from-slate-50 to-indigo-50">
         <div className="max-w-5xl mx-auto">
@@ -443,6 +446,9 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      
+      {/* Schedule Demo Modal */}
+      <ScheduleDemo isOpen={showDemoScheduler} onClose={handleCloseScheduler} />
     </div>
   );
 }
