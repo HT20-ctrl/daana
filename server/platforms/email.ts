@@ -74,39 +74,26 @@ async function connectSendGrid(req: Request, res: Response) {
   }
 }
 
-// Google OAuth redirect using real or simulated flow
+// Google OAuth redirect with real credentials
 export async function googleOAuthRedirect(req: Request, res: Response) {
   try {
-    // For now, let's fallback to our simulated flow since we're experiencing issues with the real OAuth flow
-    // This ensures a better user experience while we debug the real OAuth integration
-    console.log("Using simulated Google authentication flow");
-    const state = Math.random().toString(36).substring(2, 15);
-    const returnTo = `/api/platforms/email/google/callback`;
-    return res.redirect(`/google-auth?state=${state}&return_to=${encodeURIComponent(returnTo)}`);
-    
-    /* Commenting out real OAuth flow temporarily
     // Check if Google OAuth is configured
     if (!isGoogleOAuthConfigured()) {
-      console.log("Google OAuth not configured, falling back to simulation");
-      // Fall back to the simulated flow if credentials aren't configured
-      const state = Math.random().toString(36).substring(2, 15);
-      const returnTo = `/api/platforms/email/google/callback`;
-      return res.redirect(`/google-auth?state=${state}&return_to=${encodeURIComponent(returnTo)}`);
+      console.error("Google OAuth credentials are not configured");
+      return res.status(400).json({ 
+        message: "Google OAuth credentials are not properly configured." 
+      });
     }
     
     // Create a "state" token to prevent CSRF
-    const state = crypto.randomBytes(16).toString('hex');
-    
-    // In a real app, you'd save this state in the session or similar
-    // For this demo, we'll use it without verification
+    const state = Math.random().toString(36).substring(2, 15);
     
     // Construct the OAuth URL with the real client ID
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     
-    // Determine the correct redirect URI based on hostname
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.headers.host || req.hostname;
-    const redirectUri = `${protocol}://${host}/api/platforms/email/google/callback`;
+    // Define the redirect URI - this must exactly match one of the authorized redirect URIs
+    // configured in your Google Cloud Console project
+    const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
     
     // Define the scopes we need
     const scopes = [
@@ -129,7 +116,6 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     
     // Redirect the user to Google's authorization page
     res.redirect(authUrl.toString());
-    */
     
   } catch (error) {
     console.error("Error starting Google OAuth flow:", error);
