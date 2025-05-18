@@ -146,15 +146,17 @@ export default function KnowledgeBasePage() {
 
   // Helper function to get file icon based on type
   const getFileIcon = (fileType: string) => {
-    switch (fileType) {
-      case "pdf":
-        return <FilePen className="h-6 w-6 text-red-500" />;
-      case "docx":
-        return <File className="h-6 w-6 text-blue-500" />;
-      case "txt":
-        return <FileText className="h-6 w-6 text-gray-500" />;
-      default:
-        return <FileQuestion className="h-6 w-6 text-gray-400" />;
+    // Normalize the file type to handle both "pdf" and "application/pdf" formats
+    const normalizedType = fileType?.toLowerCase() || "";
+    
+    if (normalizedType.includes("pdf")) {
+      return <FilePen className="h-6 w-6 text-red-500" />;
+    } else if (normalizedType.includes("docx") || normalizedType.includes("document")) {
+      return <File className="h-6 w-6 text-blue-500" />;
+    } else if (normalizedType.includes("txt") || normalizedType.includes("text")) {
+      return <FileText className="h-6 w-6 text-gray-500" />;
+    } else {
+      return <FileQuestion className="h-6 w-6 text-gray-400" />;
     }
   };
 
@@ -319,12 +321,12 @@ export default function KnowledgeBasePage() {
                           <span className="ml-2 text-sm font-medium text-gray-900">{item.fileName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item.fileType.toUpperCase()}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{(item.fileType || "").includes("/") ? item.fileType.split("/")[1].toUpperCase() : (item.fileType || "").toUpperCase()}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{formatFileSize(item.fileSize)}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1 text-gray-400" />
-                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(item.createdAt || Date.now()), { addSuffix: true })}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
