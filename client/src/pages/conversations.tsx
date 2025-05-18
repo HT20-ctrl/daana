@@ -133,7 +133,7 @@ export default function Conversations() {
                 Filter
               </Button>
               <Button size="sm" variant="default" asChild>
-                <Link href="/conversations/new">
+                <Link href="/app/conversations/new">
                   <MessageSquare className="h-4 w-4 mr-2" />
                   New Conversation
                 </Link>
@@ -248,7 +248,7 @@ export default function Conversations() {
                   >
                     <Bot className="h-3 w-3 mr-1" /> AI Response
                   </Button>
-                  <Link href={`/conversations/${conversation.id}`}>
+                  <Link href={`/app/conversations/${conversation.id}`}>
                     <Button size="sm" variant="outline">Reply</Button>
                   </Link>
                 </div>
