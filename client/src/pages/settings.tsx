@@ -93,17 +93,25 @@ export default function Settings() {
     }
   }, []);
   
-  // Form state
+  // Define default values for user data
+  const defaultUser = {
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "User"
+  };
+
+  // Form state - ensure we properly handle undefined user
   const [profileForm, setProfileForm] = useState<{
     firstName: string;
     lastName: string;
     email: string;
     role: string;
   }>({
-    firstName: user?.firstName ?? "",
-    lastName: user?.lastName ?? "",
-    email: user?.email ?? "",
-    role: user?.role ?? "User"
+    firstName: user?.firstName ?? defaultUser.firstName,
+    lastName: user?.lastName ?? defaultUser.lastName,
+    email: user?.email ?? defaultUser.email,
+    role: user?.role ?? defaultUser.role
   });
   
   // AI Settings state

@@ -129,17 +129,20 @@ export default function Analytics() {
     }
     
     try {
+      // Define fallback analytics object with proper types
+      const fallbackAnalytics: Analytics = {
+        id: 1,
+        userId: '1',
+        date: null,
+        totalMessages: null,
+        aiResponses: null,
+        manualResponses: null,
+        sentimentScore: null
+      };
+      
       // Generate PDF with analytics data
       exportAnalyticsToPdf(
-        analytics || {
-          id: 1,
-          userId: '1',
-          date: null,
-          totalMessages: null,
-          aiResponses: null,
-          manualResponses: null,
-          sentimentScore: null
-        }, 
+        analytics || fallbackAnalytics, 
         conversations, 
         platforms,
         {
