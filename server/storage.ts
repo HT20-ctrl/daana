@@ -45,6 +45,7 @@ export interface IStorage {
   getKnowledgeBaseByUserId(userId: string): Promise<KnowledgeBase[]>;
   getKnowledgeBaseById(id: number): Promise<KnowledgeBase | undefined>;
   createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase>;
+  updateKnowledgeBase(id: number, data: Partial<KnowledgeBase>): Promise<KnowledgeBase>;
   
   // Analytics operations
   getAnalyticsByUserId(userId: string): Promise<Analytics | undefined>;
@@ -507,6 +508,23 @@ export class MemStorage implements IStorage {
     
     this.knowledgeBase.set(id, kb);
     return kb;
+  }
+
+  async updateKnowledgeBase(id: number, data: Partial<KnowledgeBase>): Promise<KnowledgeBase> {
+    const kb = this.knowledgeBase.get(id);
+    
+    if (!kb) {
+      throw new Error(`Knowledge base with ID ${id} not found`);
+    }
+    
+    const updatedKb = {
+      ...kb,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.knowledgeBase.set(id, updatedKb);
+    return updatedKb;
   }
 
   // Analytics operations

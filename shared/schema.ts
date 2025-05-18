@@ -79,6 +79,7 @@ export const knowledgeBase = pgTable("knowledge_base", {
   fileType: varchar("file_type").notNull(), // e.g., "pdf", "docx", "txt"
   fileSize: integer("file_size").notNull(),
   content: text("content"),
+  filePath: varchar("file_path"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
