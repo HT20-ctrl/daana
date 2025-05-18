@@ -21,6 +21,7 @@ import Settings from "@/pages/settings";
 import Search from "@/pages/search";
 import NotFound from "@/pages/not-found";
 import GoogleAuthPage from "@/pages/google-auth";
+import LandingPage from "@/pages/landing";
 
 // Auth loading screen
 function LoadingScreen() {
@@ -80,20 +81,48 @@ function MainApp() {
   );
 }
 
+// Authentication-aware router
+function AuthRouter() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  
+  // If not authenticated, show landing page
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/google-auth">
+          <GoogleAuthPage />
+        </Route>
+        <Route>
+          <LandingPage />
+        </Route>
+      </Switch>
+    );
+  }
+  
+  // If authenticated, show main app
+  return (
+    <Switch>
+      <Route path="/google-auth">
+        <GoogleAuthPage />
+      </Route>
+      <Route>
+        <MainApp />
+      </Route>
+    </Switch>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Switch>
-            <Route path="/google-auth">
-              <GoogleAuthPage />
-            </Route>
-            <Route>
-              <MainApp />
-            </Route>
-          </Switch>
+          <AuthRouter />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
