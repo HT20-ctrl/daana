@@ -48,13 +48,13 @@ export default function LandingPage() {
                 <span className="text-sm font-medium">+254 759 745 785</span>
               </a>
               
-              <Link 
-                to="/app" 
+              <a 
+                href="/api/login" 
                 className="text-sm font-medium relative overflow-hidden group"
               >
                 <span className="relative z-10 text-white group-hover:text-white transition-colors duration-300">Sign in</span>
                 <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
-              </Link>
+              </a>
               
               <a 
                 href="/api/login"
