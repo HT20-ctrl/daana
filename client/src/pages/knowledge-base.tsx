@@ -84,17 +84,44 @@ export default function KnowledgeBasePage() {
     setIsUploading(true);
 
     try {
+      // Create a new FormData instance
       const formData = new FormData();
+      
+      // Append the file with the field name that matches what the server expects
       formData.append("file", selectedFile);
+      
+      console.log("Uploading file:", selectedFile.name, "Size:", selectedFile.size, "Type:", selectedFile.type);
 
+      // Send the file to the server
       const response = await fetch("/api/knowledge-base", {
         method: "POST",
         body: formData,
+        // Don't set Content-Type header - the browser will set it with the boundary
         credentials: "include"
       });
 
+      // Check if there was a network error
+      if (!response) {
+        throw new Error("Network error occurred during upload");
+      }
+      
+      // Try to parse the response JSON
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // If we can't parse JSON but the response was ok, we can continue
+        if (response.ok) {
+          console.log("Upload seems successful despite JSON parse error");
+        } else {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+      }
+
+      // If the response status indicates an error
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        throw new Error(responseData?.message || `Upload failed: ${response.statusText}`);
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
