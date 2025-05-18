@@ -67,14 +67,14 @@ function MainApp() {
         <Header user={currentUser} />
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
           <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/conversations" component={Conversations} />
-            <Route path="/knowledge-base" component={KnowledgeBase} />
-            <Route path="/ai-responses" component={AiResponses} />
-            <Route path="/analytics" component={Analytics} />
-            <Route path="/settings" component={Settings} />
-            <Route path="/search" component={Search} />
-            <Route component={NotFound} />
+            <Route path="/app/conversations" component={Conversations} />
+            <Route path="/app/knowledge-base" component={KnowledgeBase} />
+            <Route path="/app/ai-responses" component={AiResponses} />
+            <Route path="/app/analytics" component={Analytics} />
+            <Route path="/app/settings" component={Settings} />
+            <Route path="/app/search" component={Search} />
+            <Route path="/app" component={Dashboard} />
+            <Route component={Dashboard} />
           </Switch>
         </main>
       </div>

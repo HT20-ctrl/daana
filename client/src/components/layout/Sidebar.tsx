@@ -65,12 +65,12 @@ export default function Sidebar({ user }: SidebarProps) {
   }, []);
 
   const navItems = [
-    { href: "/", icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard" },
-    { href: "/conversations", icon: <MessageSquare className="h-5 w-5" />, label: "Conversations" },
-    { href: "/ai-responses", icon: <Bot className="h-5 w-5" />, label: "AI Responses" },
-    { href: "/knowledge-base", icon: <BookText className="h-5 w-5" />, label: "Knowledge Base" },
-    { href: "/analytics", icon: <BarChart2 className="h-5 w-5" />, label: "Analytics" },
-    { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings" }
+    { href: "/app", icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard" },
+    { href: "/app/conversations", icon: <MessageSquare className="h-5 w-5" />, label: "Conversations" },
+    { href: "/app/ai-responses", icon: <Bot className="h-5 w-5" />, label: "AI Responses" },
+    { href: "/app/knowledge-base", icon: <BookText className="h-5 w-5" />, label: "Knowledge Base" },
+    { href: "/app/analytics", icon: <BarChart2 className="h-5 w-5" />, label: "Analytics" },
+    { href: "/app/settings", icon: <Settings className="h-5 w-5" />, label: "Settings" }
   ];
 
   const socialPlatforms = [
@@ -169,10 +169,10 @@ export default function Sidebar({ user }: SidebarProps) {
                     onClick={() => {
                       if (isConnected) {
                         // If connected, go to settings page
-                        window.location.href = "/settings?tab=platforms";
+                        window.location.href = "/app/settings?tab=platforms";
                       } else {
                         // For all platforms, go to settings with platform tab open first
-                        window.location.href = `/settings?tab=platforms&connect=${platform.name}`;
+                        window.location.href = `/app/settings?tab=platforms&connect=${platform.name}`;
                         
                         // For Facebook, we'll handle the connection from the settings page
                         if (platform.name === "facebook") {
@@ -214,10 +214,10 @@ export default function Sidebar({ user }: SidebarProps) {
                     onClick={() => {
                       if (isConnected) {
                         // If connected, go to settings page
-                        window.location.href = "/settings?tab=platforms";
+                        window.location.href = "/app/settings?tab=platforms";
                       } else {
                         // For all business tools, go to settings with platform tab open
-                        window.location.href = `/settings?tab=platforms`;
+                        window.location.href = `/app/settings?tab=platforms`;
                       }
                     }}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 w-full ${statusClass} text-left`}
