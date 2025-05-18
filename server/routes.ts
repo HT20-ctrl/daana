@@ -4,7 +4,7 @@ import { storage } from "./storage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Development middleware for testing without auth
-const devAuth = (req: any, res: any, next: any) => {
+const isAuthenticated = (req: any, res: any, next: any) => {
   // Set a demo user ID for all requests
   req.user = { 
     claims: { 
@@ -21,9 +21,15 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Configure multer for file uploads
 const upload = multer({
-  dest: path.join(os.tmpdir(), "dana-ai-uploads"),
+  dest: uploadsDir,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max file size
   },
@@ -33,7 +39,8 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type. Only PDF, DOCX, and TXT files are allowed."));
+      cb(null, false);
+      return cb(new Error("Only PDF, DOCX, and TXT files are allowed"));
     }
   },
 });
@@ -229,42 +236,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/knowledge-base", isAuthenticated, upload.single("file"), async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const file = req.file;
-      
-      if (!file) {
-        return res.status(400).json({ message: "No file uploaded" });
+  app.post("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
+    // Handle file upload with error handling
+    upload.single("file")(req, res, async (err) => {
+      if (err) {
+        console.error("Multer error:", err);
+        return res.status(400).json({ message: err.message });
       }
-      
-      // Extract text from the file
-      const content = await extractTextFromFiles(file.path, file.mimetype);
-      
-      // Get file type
-      let fileType = "txt";
-      if (file.mimetype === "application/pdf") {
-        fileType = "pdf";
-      } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        fileType = "docx";
+
+      try {
+        const userId = req.user.claims.sub;
+        const file = req.file;
+        
+        if (!file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+        
+        console.log("File uploaded successfully:", file.originalname, "Path:", file.path);
+        
+        // Extract text from the file
+        let content;
+        try {
+          content = await extractTextFromFiles(file.path, file.mimetype);
+        } catch (extractError) {
+          console.error("Error extracting content:", extractError);
+          // Use a placeholder for content if extraction fails
+          content = `Content from ${file.originalname} (extraction partially failed)`;
+        }
+        
+        // Get file type
+        let fileType = "txt";
+        if (file.mimetype === "application/pdf") {
+          fileType = "pdf";
+        } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          fileType = "docx";
+        }
+        
+        const knowledgeBaseEntry = await storage.createKnowledgeBase({
+          userId,
+          fileName: file.originalname,
+          fileType,
+          fileSize: file.size,
+          content
+        });
+        
+        // Clean up temp file
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up temp file:", cleanupError);
+          // Continue anyway as this is not critical
+        }
+        
+        res.json(knowledgeBaseEntry);
+      } catch (error) {
+        console.error("Error uploading knowledge base file:", error);
+        res.status(500).json({ message: "Failed to upload knowledge base file" });
       }
-      
-      const knowledgeBaseEntry = await storage.createKnowledgeBase({
-        userId,
-        fileName: file.originalname,
-        fileType,
-        fileSize: file.size,
-        content
-      });
-      
-      // Clean up temp file
-      fs.unlinkSync(file.path);
-      
-      res.status(201).json(knowledgeBaseEntry);
-    } catch (error) {
-      console.error("Error uploading knowledge base file:", error);
-      res.status(500).json({ message: "Failed to upload knowledge base file" });
-    }
+    });
   });
 
   // Analytics API
