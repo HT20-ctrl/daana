@@ -143,10 +143,9 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
       
-      // Determine redirect URI based on hostname (same as in redirect method)
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-      const host = req.headers.host || req.hostname;
-      const redirectUri = `${protocol}://${host}/api/platforms/email/google/callback`;
+      // Use the exact same redirect URI that was registered in Google Cloud Console
+      // This is critical for OAuth to work properly
+      const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
       
       // Exchange authorization code for tokens
       const tokenResponse = await exchangeCodeForTokens(
