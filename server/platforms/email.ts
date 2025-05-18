@@ -95,11 +95,11 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     // configured in your Google Cloud Console project
     const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
     
-    // Define the scopes we need
+    // Define the scopes we need - simplified to basic profile access
     const scopes = [
       'https://www.googleapis.com/auth/userinfo.email', 
-      'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/gmail.readonly' // For reading emails
+      'https://www.googleapis.com/auth/userinfo.profile'
+      // Removed Gmail scope which may require additional verification
     ];
     
     // Build the Google OAuth URL
