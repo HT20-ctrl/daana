@@ -290,7 +290,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue anyway as this is not critical
         }
         
-        res.json(knowledgeBaseEntry);
+        // Send a simple success response, avoid complex objects that might cause JSON parsing issues
+        res.status(200).send({ 
+          success: true, 
+          id: knowledgeBaseEntry.id,
+          fileName: knowledgeBaseEntry.fileName
+        });
       } catch (error) {
         console.error("Error uploading knowledge base file:", error);
         res.status(500).json({ message: "Failed to upload knowledge base file" });

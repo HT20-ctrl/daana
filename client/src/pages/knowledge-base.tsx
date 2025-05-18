@@ -105,23 +105,19 @@ export default function KnowledgeBasePage() {
         throw new Error("Network error occurred during upload");
       }
       
-      // Try to parse the response JSON
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        console.error("Error parsing response:", parseError);
-        // If we can't parse JSON but the response was ok, we can continue
-        if (response.ok) {
-          console.log("Upload seems successful despite JSON parse error");
-        } else {
-          throw new Error(`Upload failed: ${response.statusText}`);
-        }
-      }
-
-      // If the response status indicates an error
+      // Check if the response is ok before trying to parse JSON
       if (!response.ok) {
-        throw new Error(responseData?.message || `Upload failed: ${response.statusText}`);
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Upload failed (${response.status}): ${errorText}`);
+      }
+      
+      // Success response handling
+      try {
+        const responseData = await response.json();
+        console.log("Upload successful:", responseData);
+      } catch (parseError) {
+        // Even if JSON parsing fails, if the status was 200, we consider it a success
+        console.log("Upload appears successful despite JSON parsing issues");
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
