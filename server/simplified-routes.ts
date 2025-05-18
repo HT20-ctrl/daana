@@ -1,6 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { extractTextFromFiles } from "./ai";
 import { 
   connectFacebook, 
   facebookCallback, 
@@ -216,6 +220,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for file uploads
+  const uploadDir = path.join(process.cwd(), "uploads");
+  // Create uploads directory if it doesn't exist
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const storage_multer = multer.diskStorage({
+    destination: function(req, file, cb) {
+      cb(null, uploadDir);
+    },
+    filename: function(req, file, cb) {
+      cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
+    }
+  });
+
+  const upload = multer({ 
+    storage: storage_multer,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+  });
+
   // Knowledge Base API
   app.get("/api/knowledge-base", async (req, res) => {
     try {
@@ -225,6 +252,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching knowledge base:", error);
       res.status(500).json({ message: "Failed to fetch knowledge base" });
+    }
+  });
+
+  // Handle file uploads for the Knowledge Base
+  app.post("/api/knowledge-base", upload.single("file"), async (req, res) => {
+    try {
+      const userId = "1"; // Demo user ID
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      console.log("File uploaded successfully:", file.originalname, "Path:", file.path);
+      
+      // Extract text from the file
+      let content;
+      try {
+        content = await extractTextFromFiles(file.path, file.mimetype);
+      } catch (extractError) {
+        console.error("Error extracting content:", extractError);
+        // Use a placeholder for content if extraction fails
+        content = `Content from ${file.originalname} (extraction partially failed)`;
+      }
+      
+      // Get file type
+      let fileType;
+      if (file.mimetype === "application/pdf") {
+        fileType = "pdf";
+      } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        fileType = "docx";
+      } else if (file.mimetype === "text/plain") {
+        fileType = "txt";  
+      } else {
+        // Extract extension from the file name as a fallback
+        const nameParts = file.originalname.split('.');
+        fileType = nameParts.length > 1 ? nameParts[nameParts.length - 1].toLowerCase() : "unknown";
+      }
+      
+      const knowledgeBaseEntry = await storage.createKnowledgeBase({
+        userId,
+        fileName: file.originalname,
+        fileType, // Using the simplified file type (pdf, docx, txt)
+        fileSize: file.size,
+        content: content || null
+      });
+      
+      // Clean up temp file
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.error("Error cleaning up temp file:", cleanupError);
+      }
+      
+      // Return the created knowledge base entry
+      return res.status(200).json(knowledgeBaseEntry);
+    } catch (error) {
+      console.error("Error uploading knowledge base file:", error);
+      res.status(500).json({ message: "Failed to upload knowledge base file" });
     }
   });
 
