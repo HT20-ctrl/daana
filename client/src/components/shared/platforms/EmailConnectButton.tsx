@@ -172,43 +172,14 @@ export default function EmailConnectButton({ onConnect, className }: EmailConnec
                 <Button 
                   variant="outline" 
                   className="w-full flex items-center justify-center gap-2 h-12 mb-3"
-                  onClick={async () => {
+                  onClick={() => {
                     toast({
                       title: "Gmail Connection",
                       description: "Redirecting to Google authentication...",
                     });
                     
-                    // In a real implementation, we would redirect to Google OAuth
-                    // For the demo, we'll simulate creating a platform connection
-                    
-                    try {
-                      // Create a platform record for email
-                      await apiRequest("POST", "/api/platforms", {
-                        name: "email",
-                        displayName: "Gmail Integration",
-                        userId: "1", // Using demo user ID
-                        accessToken: "demo-gmail-token",
-                        isConnected: true
-                      });
-                      
-                      toast({
-                        title: "Email configured",
-                        description: "Your Gmail account has been connected successfully.",
-                      });
-                      
-                      // Refresh platforms and status
-                      queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
-                      setShowConfigDialog(false);
-                      await checkEmailStatus();
-                      
-                    } catch (error) {
-                      console.error("Error configuring email:", error);
-                      toast({
-                        title: "Configuration error",
-                        description: "An error occurred while setting up your email integration.",
-                        variant: "destructive",
-                      });
-                    }
+                    // Redirect to our Gmail OAuth flow
+                    window.location.href = "/api/platforms/email/connect?provider=gmail";
                   }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
