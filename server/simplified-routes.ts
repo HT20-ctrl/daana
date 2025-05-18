@@ -24,45 +24,6 @@ import {
 } from "./platforms/instagram";
 
 import {
-  getSlackStatus,
-  connectSlack,
-  getSlackChannels,
-  getSlackMembers,
-  getSlackMessages,
-  sendSlackMessage,
-  isSlackConfigured
-} from "./platforms/slack";
-
-import {
-  getEmailStatus,
-  connectEmail,
-  getEmails,
-  sendEmail,
-  isEmailConfigured
-} from "./platforms/email-service";
-
-import {
-  getHubSpotStatus,
-  connectHubSpot,
-  getHubSpotContacts,
-  createHubSpotContact,
-  getHubSpotDeals,
-  createHubSpotDeal,
-  isHubSpotConfigured
-} from "./platforms/hubspot-service";
-
-import {
-  getSalesforceStatus,
-  connectSalesforce,
-  salesforceCallback,
-  getSalesforceLeads,
-  createSalesforceLead,
-  getSalesforceOpportunities,
-  createSalesforceOpportunity,
-  isSalesforceConfigured
-} from "./platforms/salesforce-service";
-
-import {
   connectWhatsApp,
   whatsappCallback,
   getWhatsAppMessages,
@@ -141,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no platforms are found, create default platform entries for demonstration purposes
       if (!platforms || platforms.length === 0) {
-        // Define default platforms
+        // Create default platform entries - these will allow users to connect to various platforms
         const defaultPlatforms = [
           {
             name: "facebook",
@@ -161,42 +122,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tokenExpiry: null,
             isConnected: false
           },
-          {
-            name: "slack",
-            displayName: "Slack",
-            userId: userId,
-            accessToken: process.env.SLACK_BOT_TOKEN || null,
-            refreshToken: null,
-            tokenExpiry: null,
-            isConnected: !!process.env.SLACK_BOT_TOKEN
-          },
-          {
-            name: "email",
-            displayName: "Email",
-            userId: userId,
-            accessToken: null,
-            refreshToken: null,
-            tokenExpiry: null,
-            isConnected: false
-          },
-          {
-            name: "hubspot",
-            displayName: "HubSpot",
-            userId: userId,
-            accessToken: null,
-            refreshToken: null,
-            tokenExpiry: null,
-            isConnected: false
-          },
-          {
-            name: "salesforce",
-            displayName: "Salesforce",
-            userId: userId,
-            accessToken: null,
-            refreshToken: null,
-            tokenExpiry: null,
-            isConnected: false
-          }
           {
             name: "whatsapp",
             displayName: "WhatsApp",
