@@ -273,9 +273,28 @@ export async function sendInstagramMessage(req: Request, res: Response) {
 export async function getInstagramStatus(req: Request, res: Response) {
   try {
     const isConfigured = isInstagramConfigured();
+    
+    // Check for user's Instagram platforms
+    const userId = req.user?.claims?.sub || "1"; // Default to demo user if no auth
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    
+    // Find connected Instagram platforms
+    const connectedInstagram = userPlatforms.find(p => 
+      p.name === "instagram" && 
+      p.isConnected === true
+    );
+    
+    const isConnected = !!connectedInstagram;
+    
     res.json({ 
       configured: isConfigured,
-      needsCredentials: !isConfigured
+      connected: isConnected,
+      needsCredentials: !isConfigured,
+      message: isConnected 
+        ? "Instagram is connected" 
+        : isConfigured 
+          ? "Instagram API is configured and ready to connect" 
+          : "Instagram API credentials required"
     });
   } catch (error) {
     console.error("Error checking Instagram configuration:", error);

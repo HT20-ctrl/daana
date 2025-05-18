@@ -370,12 +370,27 @@ export class MemStorage implements IStorage {
       throw new Error(`Platform with ID ${id} not found`);
     }
     
+    console.log(`Updating platform ${id}:`, { 
+      before: platform,
+      updates: platformData
+    });
+    
     // Update the platform with new data
     const updatedPlatform: Platform = {
       ...platform,
       ...platformData,
       updatedAt: new Date()
     };
+    
+    // Making sure isConnected is explicitly set to false when disconnecting
+    if (platformData.isConnected === false) {
+      console.log(`Platform ${id} is being disconnected - explicitly setting isConnected to false`);
+      updatedPlatform.isConnected = false;
+      updatedPlatform.accessToken = null;
+      updatedPlatform.refreshToken = null;
+    }
+    
+    console.log(`Platform ${id} after update:`, updatedPlatform);
     
     this.platforms.set(id, updatedPlatform);
     return updatedPlatform;

@@ -24,10 +24,13 @@ export async function getFacebookStatus(req: Request, res: Response) {
     // Also check if user already has connected Facebook
     const userId = "1"; // Default demo user ID
     const userPlatforms = await storage.getPlatformsByUserId(userId);
+    
+    // Log platforms for debugging
+    console.log("User Facebook platforms:", userPlatforms.filter(p => p.name === "facebook"));
+    
     const connectedFacebook = userPlatforms.find(p => 
       p.name === "facebook" && 
-      p.isConnected && 
-      p.accessToken
+      p.isConnected === true
     );
     
     const isConnected = !!connectedFacebook;
