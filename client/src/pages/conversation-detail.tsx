@@ -14,8 +14,8 @@ import { SiFacebook, SiInstagram, SiWhatsapp } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ConversationDetail() {
-  const [params] = useParams();
-  const conversationId = params?.id;
+  const [location] = useLocation();
+  const conversationId = location.split('/').pop();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [replyText, setReplyText] = useState("");
