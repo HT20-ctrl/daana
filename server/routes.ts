@@ -111,6 +111,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create platform" });
     }
   });
+  
+  // Disconnect Platform - endpoint to properly disconnect integrations
+  app.post("/api/platforms/:id/disconnect", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const platformId = parseInt(req.params.id);
+      
+      // First check if this platform belongs to the user
+      const existingPlatform = await storage.getPlatformById(platformId);
+      if (!existingPlatform || existingPlatform.userId !== userId) {
+        return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      // Update the platform to disconnect it
+      const updatedPlatform = await storage.updatePlatform(platformId, {
+        isConnected: false,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `${existingPlatform.displayName} has been disconnected`,
+        platform: updatedPlatform
+      });
+    } catch (error) {
+      console.error("Error disconnecting platform:", error);
+      res.status(500).json({ message: "Failed to disconnect platform" });
+    }
+  });
 
   // Conversations API
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {

@@ -182,8 +182,8 @@ export default function Settings() {
         description: 'Please wait a moment',
       });
       
-      // Delete the platform connection
-      await apiRequest("DELETE", `/api/platforms/${platformId}`);
+      // Use the disconnect endpoint
+      await apiRequest("POST", `/api/platforms/${platformId}/disconnect`);
       
       // Force immediate refetch to update UI
       await refetchPlatforms();
