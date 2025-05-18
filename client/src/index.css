@@ -26,8 +26,24 @@
   animation-delay: 2s;
 }
 
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
 .animation-delay-4000 {
   animation-delay: 4s;
+}
+
+/* Shine effect animation for buttons */
+@keyframes shine {
+  100% {
+    right: -50%;
+    left: 100%;
+  }
+}
+
+.group:hover .group-hover\:animate-shine {
+  animation: shine 1.2s forwards;
 }
 
 /* Glassmorphism effects */

@@ -20,12 +20,12 @@ export default function LandingPage() {
           {/* Navigation */}
           <div className="relative z-10 flex items-center justify-between px-6 py-5 lg:px-8">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 p-[2px] overflow-hidden group">
-                <div className="w-full h-full rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center transition group-hover:bg-white/5">
-                  <span className="text-white font-bold text-xl">D</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 p-[2px] overflow-hidden group transform transition-all duration-300 hover:scale-110">
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-800/80 to-indigo-900/80 backdrop-blur-xl flex items-center justify-center transition group-hover:from-blue-700/80 group-hover:to-indigo-800/80">
+                  <span className="text-white font-bold text-xl group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cyan-300 group-hover:to-blue-300 transition-all duration-300">D</span>
                 </div>
               </div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-white via-cyan-100 to-blue-100 bg-clip-text text-transparent">Dana AI</span>
+              <span className="font-bold text-2xl bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent">Dana AI</span>
             </div>
             
             <div className="flex items-center gap-6">
@@ -55,29 +55,63 @@ export default function LandingPage() {
           </div>
 
           {/* Hero content */}
-          <div className="relative px-6 py-24 sm:py-32 lg:px-8 lg:py-40 max-w-5xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight">
-              All your customer interactions, <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">powered by AI</span>
-            </h1>
-            <p className="mt-6 text-lg md:text-xl leading-relaxed text-white/80 max-w-3xl mx-auto">
+          <div className="relative px-6 py-24 sm:py-32 lg:px-8 lg:py-36 max-w-5xl mx-auto text-center">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                <div className="w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-400/30 via-cyan-300/20 to-indigo-500/30 blur-3xl"></div>
+              </div>
+              <h1 className="relative text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight">
+                All your customer <br className="hidden md:block" />
+                interactions,{" "}
+                <span className="relative">
+                  <span className="relative z-10 bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 bg-clip-text text-transparent">powered by AI</span>
+                  <span className="absolute left-0 bottom-0 w-full h-[6px] bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 opacity-70 rounded-full blur-sm"></span>
+                </span>
+              </h1>
+            </div>
+            <p className="mt-8 text-lg md:text-xl leading-relaxed text-white/90 max-w-3xl mx-auto">
               Dana AI connects with all your communication channels to deliver intelligent, 
               consistent customer interactions. Manage conversations, build knowledge, and analyze 
               performance—all in one place.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="mt-12 flex flex-col sm:flex-row gap-6 justify-center">
               <a
                 href="/api/login" 
-                className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-full px-8 py-3.5 text-white font-semibold text-lg transition-all duration-300"
+                className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-blue-900/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-800/40 hover:-translate-y-1"
               >
-                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
-                <span className="relative z-10">Schedule a Demo</span>
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                  <span>Schedule a Demo</span>
+                </div>
               </a>
               <a 
                 href="#how-it-works"
-                className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 hover:border-white/30 rounded-full px-8 py-3.5 text-white font-semibold text-lg transition-all duration-300"
+                className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border-2 border-white/20 hover:bg-white/20 hover:border-white/30 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1"
               >
-                <span className="relative z-10">See how it works</span>
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h7.5A2.25 2.25 0 0013 13.75v-7.5A2.25 2.25 0 0010.75 4h-7.5zM19 4.75a.75.75 0 00-1.28-.53l-3 3a.75.75 0 00-.22.53v4.5c0 .199.079.39.22.53l3 3a.75.75 0 001.28-.53V4.75z" />
+                  </svg>
+                  <span>See how it works</span>
+                </div>
               </a>
+            </div>
+            <div className="mt-10 text-white/70 text-sm font-medium flex items-center justify-center gap-6">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-cyan-400">
+                  <path fillRule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+                <span>30-second platform setup</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-cyan-400">
+                  <path fillRule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+                <span>Trusted by 500+ businesses</span>
+              </div>
             </div>
           </div>
         </div>
@@ -297,36 +331,72 @@ export default function LandingPage() {
       </section>
 
       {/* CTA section */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-purple-900"></div>
+      <section className="py-28 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-indigo-900"></div>
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:20px_20px]"></div>
         
         {/* Animated blobs */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-gradient-to-br from-purple-500 to-pink-400 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-3000"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-3000"></div>
+        
+        {/* Abstract decorative elements */}
+        <div className="absolute top-1/4 right-[5%] w-20 h-20 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-40 blur-xl"></div>
+        <div className="absolute bottom-1/4 left-[5%] w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full opacity-30 blur-xl"></div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-3xl font-bold text-white">Ready to transform your customer communications?</h2>
-          <p className="mt-4 text-lg text-indigo-100 max-w-3xl mx-auto">
-            Join leading businesses using Dana AI to deliver exceptional customer experiences.
+          <div className="inline-block mb-3 px-4 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 backdrop-blur-sm border border-blue-500/30">
+            <span className="text-sm font-medium text-cyan-300">Transform Your Customer Experience</span>
+          </div>
+          
+          <h2 className="text-4xl sm:text-5xl font-bold text-white leading-tight">Ready to revolutionize your <br className="hidden sm:block" />customer communications?</h2>
+          <p className="mt-6 text-lg text-blue-100 max-w-3xl mx-auto">
+            Join leading businesses using Dana AI to deliver intelligent, personalized customer experiences that drive growth and loyalty.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+          
+          <div className="mt-12 flex flex-col sm:flex-row gap-6 justify-center">
             <a 
               href="/api/login"
-              className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-full px-8 py-3.5 text-white font-semibold text-lg transition-all duration-300"
+              className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-blue-900/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-800/40 hover:-translate-y-1"
             >
-              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
-              <span className="relative z-10">Schedule a Demo</span>
+              <div className="absolute top-0 -inset-x-full h-full w-1/2 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine"></div>
+              <div className="relative z-10 flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+                <span>Schedule a Demo</span>
+              </div>
             </a>
             <a 
               href="tel:+254759745785"
-              className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 hover:border-white/30 rounded-full px-8 py-3.5 text-white font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2"
+              className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/15 hover:border-white/30 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-              </svg>
-              <span className="relative z-10">Call Us</span>
+              <div className="absolute top-0 -inset-x-full h-full w-1/2 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-10 group-hover:animate-shine"></div>
+              <div className="relative z-10 flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+                <span>Call Us Now</span>
+              </div>
             </a>
+          </div>
+          
+          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold text-white">60%</div>
+              <div className="text-sm text-blue-200 mt-1">Cost Reduction</div>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold text-white">85%</div>
+              <div className="text-sm text-blue-200 mt-1">Faster Response</div>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold text-white">40%</div>
+              <div className="text-sm text-blue-200 mt-1">Customer Satisfaction</div>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold text-white">24/7</div>
+              <div className="text-sm text-blue-200 mt-1">Support Coverage</div>
+            </div>
           </div>
         </div>
       </section>
