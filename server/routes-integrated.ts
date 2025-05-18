@@ -7,6 +7,7 @@ import { storage } from "./storage";
 const isAuthenticated = (req: any, res: any, next: any) => {
   // Set a demo user ID for all requests
   req.user = { 
+    id: "1",
     claims: { 
       sub: "1" 
     } 
@@ -95,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Platforms API - development version without auth
   app.get("/api/platforms", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || "1";
       const platforms = await storage.getPlatformsByUserId(userId);
       res.json(platforms);
     } catch (error) {
@@ -106,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/platforms", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || "1";
       const platformData = { ...req.body, userId };
       const platform = await storage.createPlatform(platformData);
       res.status(201).json(platform);
