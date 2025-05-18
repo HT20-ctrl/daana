@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
+import { Platform } from "@shared/schema";
 
 // Facebook integration requires proper App ID and App Secret
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+
 // Get the hostname dynamically to support different environments
 const getRedirectUri = (req: Request): string => {
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
@@ -21,26 +23,12 @@ export async function getFacebookStatus(req: Request, res: Response) {
   try {
     const isConfigured = isFacebookConfigured();
     
-    // Also check if user already has connected Facebook
+    // Get user ID from auth or use demo user
     const userId = req?.user?.claims?.sub || "1"; // Default demo user ID
-    const userPlatforms = await storage.getPlatformsByUserId(userId);
     
-    // Log platforms for debugging, but filter sensitive info
-    const fbPlatforms = userPlatforms.filter(p => p.name === "facebook").map(p => ({
-      id: p.id,
-      name: p.name,
-      displayName: p.displayName,
-      isConnected: p.isConnected,
-      hasAccessToken: !!p.accessToken
-    }));
-    console.log("User Facebook platforms:", fbPlatforms);
-    
-    const connectedFacebook = userPlatforms.find(p => 
-      p.name === "facebook" && 
-      p.isConnected === true
-    );
-    
-    const isConnected = !!connectedFacebook;
+    // Find connected Facebook platforms
+    const platforms = await findFacebookPlatforms(userId);
+    const isConnected = platforms.some(p => p.isConnected === true);
     
     res.json({
       configured: isConfigured,
@@ -55,6 +43,81 @@ export async function getFacebookStatus(req: Request, res: Response) {
   } catch (error) {
     console.error("Error checking Facebook configuration:", error);
     res.status(500).json({ error: "Failed to check Facebook configuration" });
+  }
+}
+
+// Helper function to find Facebook platforms for a user
+async function findFacebookPlatforms(userId: string): Promise<Platform[]> {
+  const userPlatforms = await storage.getPlatformsByUserId(userId);
+  const facebookPlatforms = userPlatforms.filter(p => p.name === "facebook");
+  
+  // Log for debugging but exclude sensitive info
+  const simplified = facebookPlatforms.map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName,
+    isConnected: p.isConnected,
+    hasToken: !!p.accessToken
+  }));
+  
+  console.log("Facebook platforms for user:", simplified);
+  return facebookPlatforms;
+}
+
+// Disconnect Facebook
+export async function disconnectFacebook(req: Request, res: Response) {
+  try {
+    // Get user ID from auth or use demo user
+    const userId = req?.user?.claims?.sub || "1";
+    
+    console.log(`Attempting to disconnect Facebook for user ${userId}`);
+    
+    // Find all connected Facebook platforms
+    const facebookPlatforms = await findFacebookPlatforms(userId);
+    
+    if (facebookPlatforms.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "No Facebook accounts found to disconnect" 
+      });
+    }
+    
+    // Update each platform to disconnect it
+    for (const platform of facebookPlatforms) {
+      if (platform.isConnected) {
+        console.log(`Disconnecting Facebook platform ID ${platform.id}`);
+        
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+      }
+    }
+    
+    // Verify disconnection
+    const updatedPlatforms = await findFacebookPlatforms(userId);
+    const stillConnected = updatedPlatforms.some(p => p.isConnected === true);
+    
+    if (stillConnected) {
+      console.error("Failed to disconnect all Facebook platforms");
+      return res.status(500).json({
+        success: false,
+        message: "Failed to disconnect Facebook completely"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Facebook has been disconnected successfully"
+    });
+  } catch (error) {
+    console.error("Error disconnecting Facebook:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to disconnect Facebook"
+    });
   }
 }
 

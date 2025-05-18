@@ -269,6 +269,24 @@ export async function sendInstagramMessage(req: Request, res: Response) {
   }
 }
 
+// Helper function to find Instagram platforms for a user
+async function findInstagramPlatforms(userId: string) {
+  const userPlatforms = await storage.getPlatformsByUserId(userId);
+  const instagramPlatforms = userPlatforms.filter(p => p.name === "instagram");
+  
+  // Log for debugging but exclude sensitive info
+  const simplified = instagramPlatforms.map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName,
+    isConnected: p.isConnected,
+    hasToken: !!p.accessToken
+  }));
+  
+  console.log("Instagram platforms for user:", simplified);
+  return instagramPlatforms;
+}
+
 // Get Instagram platform status
 export async function getInstagramStatus(req: Request, res: Response) {
   try {
@@ -276,25 +294,10 @@ export async function getInstagramStatus(req: Request, res: Response) {
     
     // Check for user's Instagram platforms
     const userId = req.user?.claims?.sub || "1"; // Default to demo user if no auth
-    const userPlatforms = await storage.getPlatformsByUserId(userId);
     
-    // Log platforms for debugging, but filter sensitive info
-    const igPlatforms = userPlatforms.filter(p => p.name === "instagram").map(p => ({
-      id: p.id,
-      name: p.name,
-      displayName: p.displayName,
-      isConnected: p.isConnected,
-      hasAccessToken: !!p.accessToken
-    }));
-    console.log("User Instagram platforms:", igPlatforms);
-    
-    // Find connected Instagram platforms - strict check for isConnected true
-    const connectedInstagram = userPlatforms.find(p => 
-      p.name === "instagram" && 
-      p.isConnected === true
-    );
-    
-    const isConnected = !!connectedInstagram;
+    // Find connected Instagram platforms
+    const platforms = await findInstagramPlatforms(userId);
+    const isConnected = platforms.some(p => p.isConnected === true);
     
     res.json({ 
       configured: isConfigured,
@@ -309,5 +312,62 @@ export async function getInstagramStatus(req: Request, res: Response) {
   } catch (error) {
     console.error("Error checking Instagram configuration:", error);
     res.status(500).json({ error: "Failed to check Instagram configuration" });
+  }
+}
+
+// Disconnect Instagram
+export async function disconnectInstagram(req: Request, res: Response) {
+  try {
+    // Get user ID from auth or use demo user
+    const userId = req?.user?.claims?.sub || "1";
+    
+    console.log(`Attempting to disconnect Instagram for user ${userId}`);
+    
+    // Find all connected Instagram platforms
+    const instagramPlatforms = await findInstagramPlatforms(userId);
+    
+    if (instagramPlatforms.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "No Instagram accounts found to disconnect" 
+      });
+    }
+    
+    // Update each platform to disconnect it
+    for (const platform of instagramPlatforms) {
+      if (platform.isConnected) {
+        console.log(`Disconnecting Instagram platform ID ${platform.id}`);
+        
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+      }
+    }
+    
+    // Verify disconnection
+    const updatedPlatforms = await findInstagramPlatforms(userId);
+    const stillConnected = updatedPlatforms.some(p => p.isConnected === true);
+    
+    if (stillConnected) {
+      console.error("Failed to disconnect all Instagram platforms");
+      return res.status(500).json({
+        success: false,
+        message: "Failed to disconnect Instagram completely"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Instagram has been disconnected successfully"
+    });
+  } catch (error) {
+    console.error("Error disconnecting Instagram:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to disconnect Instagram"
+    });
   }
 }

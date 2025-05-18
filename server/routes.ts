@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { disconnectFacebook } from "./platforms/facebook";
+import { disconnectInstagram } from "./platforms/instagram";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Development middleware for testing without auth
@@ -112,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Disconnect Platform - endpoint to properly disconnect integrations
+  // Generic platform disconnect endpoint
   app.post("/api/platforms/:id/disconnect", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -123,6 +125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!existingPlatform || existingPlatform.userId !== userId) {
         return res.status(404).json({ message: "Platform not found" });
       }
+      
+      console.log(`Generic disconnect for platform ${platformId} (${existingPlatform.name})`);
       
       // Update the platform to disconnect it
       const updatedPlatform = await storage.updatePlatform(platformId, {
@@ -142,6 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to disconnect platform" });
     }
   });
+  
+  // Platform-specific disconnect endpoints
+  app.post("/api/platforms/facebook/disconnect", isAuthenticated, disconnectFacebook);
+  app.post("/api/platforms/instagram/disconnect", isAuthenticated, disconnectInstagram);
 
   // Conversations API
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
