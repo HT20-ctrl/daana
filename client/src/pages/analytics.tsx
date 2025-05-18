@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download, BarChart2, CalendarRange, ArrowUpRight, Bot, MessageSquare, Users, Activity } from "lucide-react";
+import { Download, BarChart2, CalendarRange, ArrowUpRight, Bot, MessageSquare, Users, Activity, FileDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { exportAnalyticsToPdf } from "@/lib/pdfExport";
 import { SiFacebook, SiInstagram, SiWhatsapp } from "react-icons/si";
 import {
   BarChart,
@@ -33,6 +35,23 @@ import {
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("7days");
   const [activeTab, setActiveTab] = useState("overview");
+  const { toast } = useToast();
+  
+  // Fetch data with query client
+  const { data: analytics, isLoading: isLoadingAnalytics } = useQuery({
+    queryKey: ["/api/analytics"],
+    staleTime: 60 * 1000, // 1 minute
+  });
+  
+  const { data: conversations, isLoading: isLoadingConversations } = useQuery({
+    queryKey: ["/api/conversations"],
+    staleTime: 30 * 1000, // 30 seconds
+  });
+  
+  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery({
+    queryKey: ["/api/platforms"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
   
   // Mock data for charts
   const messageVolumeData = [
@@ -95,6 +114,50 @@ export default function Analytics() {
     // Would typically fetch new data based on the range
   };
   
+  // Determine if all data is still loading
+  const isLoading = isLoadingAnalytics || isLoadingConversations || isLoadingPlatforms;
+  
+  // Handle exporting analytics data to PDF
+  const handleExportAnalytics = () => {
+    if (!analytics || !platforms || !conversations) {
+      toast({
+        title: "Export failed",
+        description: "Some data is still loading. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Generate PDF with analytics data
+      exportAnalyticsToPdf(
+        analytics, 
+        conversations, 
+        platforms,
+        {
+          title: "Dana AI Analytics Report",
+          subtitle: `Detailed Analytics - ${timeRange === "7days" ? "Last 7 Days" : 
+                                           timeRange === "30days" ? "Last 30 Days" : 
+                                           timeRange === "90days" ? "Last 90 Days" : "Last Year"}`,
+          fileName: `dana-ai-detailed-analytics-${new Date().toISOString().split('T')[0]}.pdf`
+        }
+      );
+      
+      toast({
+        title: "Export successful",
+        description: "Your analytics report has been downloaded.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error exporting analytics to PDF:", error);
+      toast({
+        title: "Export failed",
+        description: "There was an error generating your report. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -134,9 +197,13 @@ export default function Analytics() {
                 <SelectItem value="year">Last year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button 
+              variant="outline" 
+              onClick={handleExportAnalytics}
+              disabled={isLoading}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {isLoading ? "Loading..." : "Export Report"}
             </Button>
           </div>
         </div>
