@@ -56,13 +56,13 @@ export default function LandingPage() {
                 <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
               </Link>
               
-              <a 
-                href="/api/login"
+              <Link 
+                to="/app"
                 className="relative overflow-hidden group bg-white/10 backdrop-blur-xl text-white border border-white/20 rounded-full px-5 py-2.5 text-sm font-medium hover:bg-white/20 hover:border-white/30 transition-all duration-300"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full blur"></div>
                 <span className="relative z-10">Register Now</span>
-              </a>
+              </Link>
             </div>
           </div>
 
