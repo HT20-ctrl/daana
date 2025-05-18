@@ -20,6 +20,7 @@ import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import Search from "@/pages/search";
 import NotFound from "@/pages/not-found";
+import GoogleAuthPage from "@/pages/google-auth";
 
 // Auth loading screen
 function LoadingScreen() {
@@ -85,7 +86,14 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <MainApp />
+          <Switch>
+            <Route path="/google-auth">
+              <GoogleAuthPage />
+            </Route>
+            <Route>
+              <MainApp />
+            </Route>
+          </Switch>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
