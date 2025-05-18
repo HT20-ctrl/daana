@@ -42,6 +42,7 @@ export default function KnowledgeBasePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -147,6 +148,8 @@ export default function KnowledgeBasePage() {
     })
     .finally(() => {
       setIsUploading(false);
+      // Close the upload dialog when complete
+      setIsUploadDialogOpen(false);
     });
   };
 
@@ -196,10 +199,13 @@ export default function KnowledgeBasePage() {
             accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
           />
           <div>
-            <Dialog>
+            <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
               <DialogTrigger asChild>
                 <Button 
-                  onClick={() => document.getElementById("fileUpload")?.click()}
+                  onClick={() => {
+                    document.getElementById("fileUpload")?.click();
+                    setIsUploadDialogOpen(true);
+                  }}
                   variant="default"
                 >
                   <FileUp className="mr-2 h-4 w-4" /> Upload Document
