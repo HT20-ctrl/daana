@@ -89,28 +89,19 @@ function AuthRouter() {
     return <LoadingScreen />;
   }
   
-  // If not authenticated, show landing page
-  if (!isAuthenticated) {
-    return (
-      <Switch>
-        <Route path="/google-auth">
-          <GoogleAuthPage />
-        </Route>
-        <Route>
-          <LandingPage />
-        </Route>
-      </Switch>
-    );
-  }
-  
-  // If authenticated, show main app
   return (
     <Switch>
       <Route path="/google-auth">
         <GoogleAuthPage />
       </Route>
-      <Route>
+      <Route path="/landing">
+        <LandingPage />
+      </Route>
+      <Route path="/app">
         <MainApp />
+      </Route>
+      <Route>
+        <LandingPage />
       </Route>
     </Switch>
   );
