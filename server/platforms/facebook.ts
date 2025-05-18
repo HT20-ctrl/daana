@@ -78,7 +78,7 @@ async function findFacebookPlatforms(userId: string): Promise<Platform[]> {
 export async function disconnectFacebook(req: Request, res: Response) {
   try {
     // Get user ID from auth or use demo user
-    const userId = req?.user?.claims?.sub || "1";
+    const userId = (req.user as any)?.claims?.sub || "1"; // Use type assertion to safely access claims
     
     console.log(`Attempting to disconnect Facebook for user ${userId}`);
     

@@ -293,7 +293,7 @@ export async function getInstagramStatus(req: Request, res: Response) {
     const isConfigured = isInstagramConfigured();
     
     // Check for user's Instagram platforms
-    const userId = req.user?.claims?.sub || "1"; // Default to demo user if no auth
+    const userId = (req.user as any)?.claims?.sub || "1"; // Default to demo user if no auth
     
     // Find connected Instagram platforms
     const platforms = await findInstagramPlatforms(userId);
@@ -328,7 +328,7 @@ export async function getInstagramStatus(req: Request, res: Response) {
 export async function disconnectInstagram(req: Request, res: Response) {
   try {
     // Get user ID from auth or use demo user
-    const userId = req?.user?.claims?.sub || "1";
+    const userId = (req.user as any)?.claims?.sub || "1"; // Use type assertion for safe access
     
     console.log(`Attempting to disconnect Instagram for user ${userId}`);
     
