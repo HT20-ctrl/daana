@@ -246,14 +246,12 @@ async function setup() {
   console.log("Database setup complete");
 }
 
-// Run the setup if executed directly
-if (require.main === module) {
-  setup()
-    .then(() => process.exit(0))
-    .catch((err) => {
-      console.error("Database setup failed:", err);
-      process.exit(1);
-    });
-}
+// Run the setup directly
+setup()
+  .then(() => console.log("Setup completed successfully"))
+  .catch((err) => {
+    console.error("Database setup failed:", err);
+    process.exit(1);
+  });
 
 export { setup, main as migrate };
