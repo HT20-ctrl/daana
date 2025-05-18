@@ -371,28 +371,48 @@ export class MemStorage implements IStorage {
     }
     
     console.log(`Updating platform ${id}:`, { 
-      before: platform,
+      before: {
+        id: platform.id,
+        name: platform.name,
+        isConnected: platform.isConnected,
+        hasToken: !!platform.accessToken
+      },
       updates: platformData
     });
     
-    // Update the platform with new data
+    // Start with a clean clone of the platform
     const updatedPlatform: Platform = {
       ...platform,
-      ...platformData,
       updatedAt: new Date()
     };
     
-    // Making sure isConnected is explicitly set to false when disconnecting
+    // Override with new data
+    Object.keys(platformData).forEach(key => {
+      if (platformData[key] !== undefined) {
+        updatedPlatform[key] = platformData[key];
+      }
+    });
+    
+    // Special handling for disconnection
     if (platformData.isConnected === false) {
-      console.log(`Platform ${id} is being disconnected - explicitly setting isConnected to false`);
+      console.log(`Platform ${id} is being disconnected - explicitly setting connection data to null`);
       updatedPlatform.isConnected = false;
       updatedPlatform.accessToken = null;
       updatedPlatform.refreshToken = null;
+      updatedPlatform.tokenExpiry = null;
     }
     
-    console.log(`Platform ${id} after update:`, updatedPlatform);
+    console.log(`Platform ${id} after update:`, {
+      id: updatedPlatform.id,
+      name: updatedPlatform.name,
+      isConnected: updatedPlatform.isConnected,
+      hasToken: !!updatedPlatform.accessToken
+    });
     
+    // Replace the platform in the map with our updated version
+    this.platforms.delete(id);
     this.platforms.set(id, updatedPlatform);
+    
     return updatedPlatform;
   }
   
