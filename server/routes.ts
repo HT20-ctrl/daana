@@ -363,18 +363,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // In our current implementation, we need to look through the uploads folder
-      // to find the actual file - in production this would be more robust
-      const files = fs.readdirSync('uploads/');
-      console.log("Available files in uploads/:", files);
-      
-      // For demo purposes, since we know there's only one file, let's use that
-      if (files.length === 0) {
-        return res.status(404).json({ message: "No files found in uploads directory" });
+      // Use the file path stored in the database
+      if (!file.filePath) {
+        return res.status(404).json({ message: "File path not found in database" });
       }
       
-      // Use the first file in the directory (for demo)
-      const filePath = `uploads/${files[0]}`;
+      // Check if the file exists
+      if (!fs.existsSync(file.filePath)) {
+        return res.status(404).json({ message: "File not found on disk" });
+      }
+      
+      const filePath = file.filePath;
       console.log("Using file path:", filePath);
       
       // Set the appropriate content type
@@ -436,12 +435,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileName: file.originalname,
           fileType, // Using the simplified file type (pdf, docx, txt)
           fileSize: file.size,
-          content: content || null
+          content: content || null,
+          filePath: file.path // Store the file path in the database
         });
-        
-        // We'll keep the file for download functionality instead of deleting it
-        // Store the file path in the database
-        knowledgeBaseEntry.filePath = file.path;
         
         // Return the created knowledge base entry
         return res.status(200).json(knowledgeBaseEntry);
