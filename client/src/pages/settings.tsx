@@ -99,6 +99,11 @@ export default function Settings() {
     lastName: user?.lastName || "",
     email: user?.email || "",
     role: user?.role || "User"
+  } as {
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
   });
   
   // AI Settings state
