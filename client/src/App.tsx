@@ -98,9 +98,15 @@ function MainApp() {
 // Authentication-aware router
 function AuthRouter() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
   
   if (isLoading) {
     return <LoadingScreen />;
+  }
+  
+  // Check if the path starts with /app to handle all app routes
+  if (location.startsWith('/app')) {
+    return <MainApp />;
   }
   
   return (
@@ -110,9 +116,6 @@ function AuthRouter() {
       </Route>
       <Route path="/signin">
         <SignInPage />
-      </Route>
-      <Route path="/app">
-        <MainApp />
       </Route>
       <Route path="/dashboard">
         <MainApp />
