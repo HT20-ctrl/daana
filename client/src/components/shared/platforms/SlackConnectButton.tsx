@@ -6,6 +6,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { CheckCircle2, XCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import SlackConfigForm from "./SlackConfigForm";
 
 interface SlackConnectButtonProps {
   onConnect?: () => void;
@@ -19,6 +25,7 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
     platformId?: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   const { toast } = useToast();
   const [location] = useLocation();
 
@@ -135,23 +142,30 @@ export default function SlackConnectButton({ onConnect, className }: SlackConnec
     );
   }
 
-  // If Slack API credentials are not configured, show a button that will prompt for credentials
+  // If Slack API credentials are not configured, show a button that opens the config form
   if (!status.configured) {
     return (
-      <Button 
-        variant="outline" 
-        className={`flex items-center gap-2 ${className}`}
-        onClick={() => {
-          toast({
-            title: "Slack API credentials needed",
-            description: "Please provide Slack Bot Token and Channel ID to connect to Slack.",
-          });
-        }}
-      >
-        <SiSlack className="text-purple-600" />
-        <XCircle className="w-4 h-4 text-red-500 mr-1" />
-        <span>Configure Slack</span>
-      </Button>
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            className={`flex items-center gap-2 ${className}`}
+          >
+            <SiSlack className="text-purple-600" />
+            <XCircle className="w-4 h-4 text-red-500 mr-1" />
+            <span>Configure Slack</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <SlackConfigForm 
+            onConfigured={() => {
+              setShowConfigDialog(false);
+              checkSlackStatus();
+            }}
+            onCancel={() => setShowConfigDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     );
   }
 
