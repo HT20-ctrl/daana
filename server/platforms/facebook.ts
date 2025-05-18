@@ -28,7 +28,16 @@ export async function getFacebookStatus(req: Request, res: Response) {
     
     // Find connected Facebook platforms
     const platforms = await findFacebookPlatforms(userId);
-    const isConnected = platforms.some(p => p.isConnected === true);
+    
+    // Force a fresh check by explicitly looking at the isConnected status
+    console.log("Checking Facebook connection status for platforms:", platforms);
+    
+    // A platform is considered connected if isConnected is true and it has an accessToken
+    const isConnected = platforms.some(p => {
+      const connected = p.isConnected === true && !!p.accessToken;
+      console.log(`Platform ${p.id} connection status: ${connected} (isConnected=${p.isConnected}, hasToken=${!!p.accessToken})`);
+      return connected;
+    });
     
     res.json({
       configured: isConfigured,
@@ -75,6 +84,8 @@ export async function disconnectFacebook(req: Request, res: Response) {
     // Find all connected Facebook platforms
     const facebookPlatforms = await findFacebookPlatforms(userId);
     
+    console.log("Found Facebook platforms:", facebookPlatforms);
+    
     if (facebookPlatforms.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -82,31 +93,42 @@ export async function disconnectFacebook(req: Request, res: Response) {
       });
     }
     
-    // Update each platform to disconnect it
+    // Loop through all platforms to disconnect
+    let disconnectionSuccess = false;
+    
     for (const platform of facebookPlatforms) {
-      if (platform.isConnected) {
-        console.log(`Disconnecting Facebook platform ID ${platform.id}`);
-        
+      console.log(`Processing Facebook platform ID ${platform.id}, currently isConnected=${platform.isConnected}`);
+      
+      try {
+        // Force disconnect by explicit overrides
         await storage.updatePlatform(platform.id, {
           isConnected: false,
           accessToken: null,
           refreshToken: null,
           tokenExpiry: null
         });
+        
+        // Double-check the update worked
+        const updated = await storage.getPlatformById(platform.id);
+        console.log(`After update, platform ${platform.id} status: isConnected=${updated?.isConnected}, hasToken=${!!updated?.accessToken}`);
+        
+        disconnectionSuccess = true;
+      } catch (updateError) {
+        console.error(`Failed to update platform ${platform.id}:`, updateError);
       }
     }
     
-    // Verify disconnection
-    const updatedPlatforms = await findFacebookPlatforms(userId);
-    const stillConnected = updatedPlatforms.some(p => p.isConnected === true);
-    
-    if (stillConnected) {
-      console.error("Failed to disconnect all Facebook platforms");
+    if (!disconnectionSuccess) {
+      console.error("Failed to disconnect any Facebook platforms");
       return res.status(500).json({
         success: false,
         message: "Failed to disconnect Facebook completely"
       });
     }
+    
+    // Final verification
+    const updatedPlatforms = await findFacebookPlatforms(userId);
+    console.log("Updated Facebook platforms after disconnect:", updatedPlatforms);
     
     res.json({
       success: true,

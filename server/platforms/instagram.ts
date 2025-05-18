@@ -297,7 +297,16 @@ export async function getInstagramStatus(req: Request, res: Response) {
     
     // Find connected Instagram platforms
     const platforms = await findInstagramPlatforms(userId);
-    const isConnected = platforms.some(p => p.isConnected === true);
+    
+    // Force a fresh check by explicitly looking at the isConnected status
+    console.log("Checking Instagram connection status for platforms:", platforms);
+    
+    // A platform is considered connected if isConnected is true and it has an accessToken
+    const isConnected = platforms.some(p => {
+      const connected = p.isConnected === true && !!p.accessToken;
+      console.log(`Platform ${p.id} connection status: ${connected} (isConnected=${p.isConnected}, hasToken=${!!p.accessToken})`);
+      return connected;
+    });
     
     res.json({ 
       configured: isConfigured,
@@ -326,6 +335,8 @@ export async function disconnectInstagram(req: Request, res: Response) {
     // Find all connected Instagram platforms
     const instagramPlatforms = await findInstagramPlatforms(userId);
     
+    console.log("Found Instagram platforms:", instagramPlatforms);
+    
     if (instagramPlatforms.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -333,31 +344,42 @@ export async function disconnectInstagram(req: Request, res: Response) {
       });
     }
     
-    // Update each platform to disconnect it
+    // Loop through all platforms to disconnect
+    let disconnectionSuccess = false;
+    
     for (const platform of instagramPlatforms) {
-      if (platform.isConnected) {
-        console.log(`Disconnecting Instagram platform ID ${platform.id}`);
-        
+      console.log(`Processing Instagram platform ID ${platform.id}, currently isConnected=${platform.isConnected}`);
+      
+      try {
+        // Force disconnect by explicit overrides
         await storage.updatePlatform(platform.id, {
           isConnected: false,
           accessToken: null,
           refreshToken: null,
           tokenExpiry: null
         });
+        
+        // Double-check the update worked
+        const updated = await storage.getPlatformById(platform.id);
+        console.log(`After update, platform ${platform.id} status: isConnected=${updated?.isConnected}, hasToken=${!!updated?.accessToken}`);
+        
+        disconnectionSuccess = true;
+      } catch (updateError) {
+        console.error(`Failed to update platform ${platform.id}:`, updateError);
       }
     }
     
-    // Verify disconnection
-    const updatedPlatforms = await findInstagramPlatforms(userId);
-    const stillConnected = updatedPlatforms.some(p => p.isConnected === true);
-    
-    if (stillConnected) {
-      console.error("Failed to disconnect all Instagram platforms");
+    if (!disconnectionSuccess) {
+      console.error("Failed to disconnect any Instagram platforms");
       return res.status(500).json({
         success: false,
         message: "Failed to disconnect Instagram completely"
       });
     }
+    
+    // Final verification
+    const updatedPlatforms = await findInstagramPlatforms(userId);
+    console.log("Updated Instagram platforms after disconnect:", updatedPlatforms);
     
     res.json({
       success: true,
