@@ -227,22 +227,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const storage_multer = multer.diskStorage({
-    destination: function(req, file, cb) {
-      cb(null, uploadDir);
-    },
-    filename: function(req, file, cb) {
-      cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
-    }
-  });
-
-  const upload = multer({ 
-    storage: storage_multer,
-    limits: {
-      fileSize: 10 * 1024 * 1024 // 10MB limit
-    }
-  });
-
   // Knowledge Base API
   app.get("/api/knowledge-base", async (req, res) => {
     try {
@@ -256,6 +240,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Handle file uploads for the Knowledge Base
+  // Setup a basic file upload handler
+  const upload = multer({
+    dest: 'uploads/',
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB
+    }
+  });
+  
   app.post("/api/knowledge-base", upload.single("file"), async (req, res) => {
     try {
       const userId = "1"; // Demo user ID

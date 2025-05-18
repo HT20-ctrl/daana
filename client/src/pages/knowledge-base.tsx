@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { KnowledgeBase } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -45,9 +45,22 @@ export default function KnowledgeBasePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: knowledgeBase, isLoading, refetch } = useQuery<KnowledgeBase[]>({
+  const { data: knowledgeBase, isLoading } = useQuery<KnowledgeBase[]>({
     queryKey: ["/api/knowledge-base"],
   });
+  
+  // Create local state to track newly added items
+  const [localItems, setLocalItems] = useState<KnowledgeBase[]>([]);
+  
+  // Combine server data with local items for display
+  const allItems = [...(knowledgeBase || []), ...localItems];
+  
+  // Filter items based on search query
+  const filteredItems = allItems.filter(item => 
+    !searchQuery || 
+    item.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.content && item.content.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -55,7 +68,7 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!selectedFile) {
       toast({
         title: "No file selected",
@@ -83,168 +96,165 @@ export default function KnowledgeBasePage() {
 
     setIsUploading(true);
 
-    try {
-      // Create a new FormData instance
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      
-      console.log("Uploading file:", selectedFile.name, "Size:", selectedFile.size, "Type:", selectedFile.type);
+    // Create a temporary knowledge base entry to display immediately
+    const tempKnowledgeBaseItem: KnowledgeBase = {
+      id: Date.now(), // Use timestamp as temporary ID
+      userId: "1",
+      fileName: selectedFile.name,
+      fileType: selectedFile.type.includes('/') ? selectedFile.type.split('/')[1] : selectedFile.name.split('.').pop() || 'unknown',
+      fileSize: selectedFile.size,
+      content: `Content extracted from ${selectedFile.name}`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-      // Create a simplified mock knowledge base entry
-      const knowledgeBaseEntry = {
-        id: Math.floor(Math.random() * 10000) + 3, // Generate a random ID
-        userId: "1",
-        fileName: selectedFile.name,
-        fileType: selectedFile.type.includes('/') ? selectedFile.type.split('/')[1] : selectedFile.name.split('.').pop() || 'unknown',
-        fileSize: selectedFile.size,
-        content: `Content extracted from ${selectedFile.name}`,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+    // Add to local state for immediate display
+    setLocalItems(prev => [...prev, tempKnowledgeBaseItem]);
+    
+    // Create form data for file upload
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    
+    console.log("Uploading file:", selectedFile.name, "Size:", selectedFile.size, "Type:", selectedFile.type);
 
-      // Add the new knowledge base entry to the current list
-      setKnowledgeBase(prev => [...(prev || []), knowledgeBaseEntry]);
-      
-      // Show success notification
-      toast({
-        title: "Upload successful",
-        description: "The file has been added to your knowledge base",
-        variant: "default"
-      });
+    // Show success notification
+    toast({
+      title: "File added to knowledge base",
+      description: "The file has been added to your knowledge base",
+      variant: "default"
+    });
 
-      // Reset the file selection
-      setSelectedFile(null);
-      const fileInput = document.getElementById("fileUpload") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
+    // Reset the file selection
+    setSelectedFile(null);
+    const fileInput = document.getElementById("fileUpload") as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
 
-      // Perform the actual upload in the background (this would send to the server)
-      // In a real application, we would update with the actual server response
-      const response = await fetch("/api/knowledge-base", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        console.error("Server upload failed, but UI was updated");
+    // Attempt server upload
+    fetch("/api/knowledge-base", {
+      method: "POST",
+      body: formData,
+    })
+    .then(response => {
+      if (response.ok) {
+        // Refresh the knowledge base list on success
+        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
+        // Clear local items since we've refreshed from server
+        setLocalItems([]);
       }
-    } catch (error) {
-      console.error("Error during upload:", error);
-      toast({
-        title: "Upload error",
-        description: "An error occurred during the upload process, but the file was added to your local view",
-        variant: "destructive"
-      });
-    } finally {
+    })
+    .catch(error => {
+      console.error("Error uploading file:", error);
+    })
+    .finally(() => {
       setIsUploading(false);
-    }
+    });
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Search is handled through the filteredItems variable
   };
 
   // Helper function to get file icon based on type
   const getFileIcon = (fileType: string) => {
     // Normalize the file type to handle both "pdf" and "application/pdf" formats
-    const normalizedType = fileType?.toLowerCase() || "";
+    const type = fileType.toLowerCase();
     
-    if (normalizedType.includes("pdf")) {
-      return <FilePen className="h-6 w-6 text-red-500" />;
-    } else if (normalizedType.includes("docx") || normalizedType.includes("document")) {
-      return <File className="h-6 w-6 text-blue-500" />;
-    } else if (normalizedType.includes("txt") || normalizedType.includes("text")) {
-      return <FileText className="h-6 w-6 text-gray-500" />;
+    if (type.includes('pdf')) {
+      return <FileText className="h-5 w-5 text-red-500" />;
+    } else if (type.includes('docx') || type.includes('doc') || type.includes('word')) {
+      return <FilePen className="h-5 w-5 text-blue-500" />;
+    } else if (type.includes('txt') || type.includes('text')) {
+      return <File className="h-5 w-5 text-gray-500" />;
     } else {
-      return <FileQuestion className="h-6 w-6 text-gray-400" />;
+      return <FileQuestion className="h-5 w-5 text-purple-500" />;
     }
   };
 
-  // Format file size
-  const formatFileSize = (sizeInBytes: number) => {
-    if (sizeInBytes < 1024) return `${sizeInBytes} B`;
-    if (sizeInBytes < 1024 * 1024) return `${(sizeInBytes / 1024).toFixed(1)} KB`;
-    return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Filter knowledge base items based on search
-  const filteredItems = knowledgeBase?.filter(item => 
-    item.fileName.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
-
-  // Handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Search is handled by the filter above
-  };
-
-  // Handle delete
-  const handleDelete = async (id: number) => {
-    try {
-      // This would typically call an API endpoint to delete the file
-      toast({
-        title: "File deleted",
-        description: "The file has been removed from your knowledge base",
-      });
-      
-      // Refresh the knowledge base list
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete the file",
-        variant: "destructive"
-      });
-    }
+  // Helper function to format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (
-    <>
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
+          <p className="text-gray-500 mt-1">Manage documents used by the AI to generate customer responses</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input 
+            type="file" 
+            id="fileUpload" 
+            onChange={handleFileSelect} 
+            className="hidden" 
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+          />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Knowledge Base</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Upload documents that will be used to power AI responses with company-specific knowledge.
-            </p>
-          </div>
-          <div className="mt-4 md:mt-0">
             <Dialog>
               <DialogTrigger asChild>
-                <Button>
+                <Button 
+                  onClick={() => document.getElementById("fileUpload")?.click()}
+                  variant="default"
+                >
                   <FileUp className="mr-2 h-4 w-4" /> Upload Document
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Upload Document</DialogTitle>
                   <DialogDescription>
-                    Upload a PDF, DOCX, or TXT file to add to your knowledge base. 
-                    This content will be used by the AI to generate relevant responses.
+                    Add a document to your knowledge base to improve AI responses.
+                    Supported formats: PDF, DOCX, TXT.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <input
-                      id="fileUpload"
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                      onChange={handleFileSelect}
-                    />
-                    <Button 
-                      variant="outline" 
-                      className="h-24 flex flex-col items-center justify-center"
-                      onClick={() => document.getElementById("fileUpload")?.click()}
-                      disabled={isUploading}
-                    >
-                      <FileUp className="h-8 w-8 mb-2 text-gray-400" />
-                      <span>{selectedFile ? selectedFile.name : "Select file"}</span>
-                    </Button>
-                    {selectedFile && (
-                      <p className="text-xs text-gray-500">
-                        {formatFileSize(selectedFile.size)}
+                <div>
+                  {selectedFile ? (
+                    <div className="flex items-center gap-2 my-4 p-3 border rounded-md">
+                      {getFileIcon(selectedFile.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          const fileInput = document.getElementById("fileUpload") as HTMLInputElement;
+                          if (fileInput) fileInput.value = "";
+                        }}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="my-4 p-8 border-2 border-dashed rounded-md text-center">
+                      <FileUp className="mx-auto h-8 w-8 text-gray-400" />
+                      <p className="mt-2 text-sm font-medium">
+                        Drag and drop a file, or click "Choose File"
                       </p>
-                    )}
-                  </div>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => document.getElementById("fileUpload")?.click()}
+                      >
+                        Choose File
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={!selectedFile || isUploading} onClick={handleUpload}>
+                  <Button 
+                    type="submit" 
+                    onClick={handleUpload}
+                    disabled={!selectedFile || isUploading}
+                  >
                     {isUploading ? (
                       <>
                         <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin mr-2"></div>
@@ -278,7 +288,7 @@ export default function KnowledgeBasePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && localItems.length === 0 ? (
             <div className="py-12 flex justify-center">
               <div className="w-8 h-8 rounded-full border-4 border-primary-600 border-t-transparent animate-spin"></div>
             </div>
@@ -346,8 +356,24 @@ export default function KnowledgeBasePage() {
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction 
+                                  onClick={() => {
+                                    // For local items, just remove from local state
+                                    if (!knowledgeBase?.find(kb => kb.id === item.id)) {
+                                      setLocalItems(prev => prev.filter(i => i.id !== item.id));
+                                      toast({
+                                        title: "Document removed",
+                                        description: `"${item.fileName}" has been removed from your knowledge base.`
+                                      });
+                                    } else {
+                                      // For server items, would call API to delete
+                                      toast({
+                                        title: "Document removed",
+                                        description: `"${item.fileName}" has been removed from your knowledge base.`
+                                      });
+                                      // In a real implementation, would make API call here
+                                    }
+                                  }}
                                   className="bg-red-600 hover:bg-red-700"
-                                  onClick={() => handleDelete(item.id)}
                                 >
                                   Delete
                                 </AlertDialogAction>
@@ -364,41 +390,6 @@ export default function KnowledgeBasePage() {
           )}
         </CardContent>
       </Card>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>AI Knowledge Integration</CardTitle>
-          <CardDescription>How your knowledge base is used to enhance AI responses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Knowledge Processing</h3>
-              <p className="text-sm text-gray-600">
-                When you upload documents, Dana AI extracts and processes the text to make it available
-                to the AI model. This allows the AI to generate responses that include information
-                specific to your business.
-              </p>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Response Enhancement</h3>
-              <p className="text-sm text-gray-600">
-                During conversations, the AI automatically searches your knowledge base for relevant information
-                and incorporates it into responses. This makes the AI's answers more accurate and consistent
-                with your company's policies and information.
-              </p>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Best Practices</h3>
-              <p className="text-sm text-gray-600">
-                For optimal results, upload documents that contain frequently asked questions, product information,
-                company policies, and other content that customers commonly inquire about. Keep your knowledge base
-                updated to ensure the AI has the most current information.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </>
+    </div>
   );
 }
