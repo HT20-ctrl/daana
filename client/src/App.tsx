@@ -98,11 +98,29 @@ function AuthRouter() {
       <Route path="/landing">
         <LandingPage />
       </Route>
-      <Route path="/">
+      <Route path="/" exact>
         <LandingPage />
       </Route>
       <Route path="/signin">
         <SignInPage />
+      </Route>
+      <Route path="/app/conversations">
+        <MainApp />
+      </Route>
+      <Route path="/app/ai-responses">
+        <MainApp />
+      </Route>
+      <Route path="/app/knowledge-base">
+        <MainApp />
+      </Route>
+      <Route path="/app/analytics">
+        <MainApp />
+      </Route>
+      <Route path="/app/settings">
+        <MainApp />
+      </Route>
+      <Route path="/app/search">
+        <MainApp />
       </Route>
       <Route path="/app">
         <MainApp />
