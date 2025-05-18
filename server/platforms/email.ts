@@ -91,15 +91,20 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     // Construct the OAuth URL with the real client ID
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     
-    // Use the exact Replit domain for the redirect URI
-    // This must match what's configured in Google Cloud Console
-    const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
+    // Locally for testing, when you click the link, use a redirect URI that works with localhost:5000
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers.host || req.hostname;
+    let redirectUri = `${protocol}://${host}/api/platforms/email/google/callback`;
     
-    // Define the scopes we need - simplified to basic profile access
+    // For production deployment, use the fixed Replit domain redirect
+    if (host.includes('replit.app')) {
+      redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
+    }
+    
+    // Using only the most basic scopes to minimize verification requirements
     const scopes = [
-      'https://www.googleapis.com/auth/userinfo.email', 
-      'https://www.googleapis.com/auth/userinfo.profile'
-      // Removed Gmail scope which may require additional verification
+      'email',
+      'profile'
     ];
     
     // Build the Google OAuth URL
@@ -109,7 +114,7 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', scopes.join(' '));
     authUrl.searchParams.append('access_type', 'offline'); // Get refresh token
-    authUrl.searchParams.append('prompt', 'consent'); // Force consent screen
+    authUrl.searchParams.append('include_granted_scopes', 'true');
     authUrl.searchParams.append('state', state);
     
     console.log(`Redirecting to Google OAuth: ${authUrl.toString()}`);
@@ -143,9 +148,15 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
       
-      // Use the exact same redirect URI that was registered in Google Cloud Console
-      // This is critical for OAuth to work properly
-      const redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
+      // Match the same dynamic redirect URI logic as in the authorization request
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers.host || req.hostname;
+      let redirectUri = `${protocol}://${host}/api/platforms/email/google/callback`;
+      
+      // For production deployment, use the fixed Replit domain redirect
+      if (host.includes('replit.app')) {
+        redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
+      }
       
       // Exchange authorization code for tokens
       const tokenResponse = await exchangeCodeForTokens(
