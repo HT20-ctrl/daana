@@ -269,47 +269,7 @@ export default function KnowledgeBasePage() {
         </div>
       </div>
 
-      {/* Introduction Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-lg text-blue-700">
-              <FileText className="mr-2 h-5 w-5" /> How It Works
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-blue-800">
-              Upload company documents, FAQs, and policies. Our AI will analyze them to provide accurate responses to customer inquiries based on your specific business information.
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-emerald-200 bg-emerald-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-lg text-emerald-700">
-              <FileUp className="mr-2 h-5 w-5" /> Supported Formats
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-emerald-800">
-              We support PDF, DOCX, and TXT files. For best results, use clear, well-structured documents with sections and headings that contain your key business information.
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-purple-200 bg-purple-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-lg text-purple-700">
-              <Search className="mr-2 h-5 w-5" /> Smart Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-purple-800">
-              Dana AI automatically extracts, analyzes, and indexes your document content. The system references this knowledge when crafting personalized responses to customer inquiries.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+
 
       <Card>
         <CardHeader>
@@ -432,6 +392,48 @@ export default function KnowledgeBasePage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Knowledge Base Best Practices */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg text-blue-700">
+              <FileText className="mr-2 h-5 w-5" /> How It Works
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-blue-800">
+              Upload company documents, FAQs, and policies. Our AI will analyze them to provide accurate responses to customer inquiries based on your specific business information.
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg text-emerald-700">
+              <FileUp className="mr-2 h-5 w-5" /> Supported Formats
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-emerald-800">
+              We support PDF, DOCX, and TXT files. For best results, use clear, well-structured documents with sections and headings that contain your key business information.
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-purple-200 bg-purple-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg text-purple-700">
+              <Search className="mr-2 h-5 w-5" /> Smart Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-purple-800">
+              Dana AI automatically extracts, analyzes, and indexes your document content. The system references this knowledge when crafting personalized responses to customer inquiries.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
