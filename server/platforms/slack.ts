@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import { WebClient } from "@slack/web-api";
 import { storage } from "../storage";
-import { ConversationType, InsertConversation, InsertMessage, platforms } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { ConversationType, InsertConversation, InsertMessage, platforms, users } from "../../shared/schema";
+import { eq, and } from "drizzle-orm";
 import { db } from "../db";
 
 // Check if Slack API credentials are configured
@@ -13,15 +13,30 @@ export function isSlackConfigured(): boolean {
 
 // Get Slack platform status
 export async function getSlackStatus(req: Request, res: Response) {
-  const userId = req.user?.id || "1";
+  // Get user ID from authenticated user or use default admin user
+  let userId = req.user?.id;
+  
+  if (!userId) {
+    // Find default admin user
+    const [defaultUser] = await db.select().from(users).where(eq(users.role, "admin"));
+    userId = defaultUser?.id;
+  }
+  
+  if (!userId) {
+    return res.status(401).json({ 
+      message: "User not authenticated and no default user found" 
+    });
+  }
   
   try {
     // Check if platform is already connected for this user
     const [platformRecord] = await db.select()
       .from(platforms)
       .where(
-        eq(platforms.userId, userId) && 
-        eq(platforms.name, "slack")
+        and(
+          eq(platforms.userId, userId),
+          eq(platforms.name, "slack")
+        )
       );
     
     res.json({ 
@@ -62,15 +77,39 @@ export async function connectSlack(req: Request, res: Response) {
       throw new Error("Slack API token validation failed");
     }
 
-    // Get user ID from authenticated user
-    const userId = req.user?.id || "1";
+    // Get user ID from authenticated user or use default admin user
+    let userId = req.user?.id;
+    
+    if (!userId) {
+      // Find default admin user
+      const [defaultUser] = await db.select().from(users).where(eq(users.role, "admin"));
+      userId = defaultUser?.id;
+    }
+    
+    if (!userId) {
+      // Create a new default user if none exists
+      const [newUser] = await db.insert(users)
+        .values({
+          id: crypto.randomUUID(),
+          email: "demo@example.com",
+          firstName: "Demo",
+          lastName: "User",
+          role: "admin",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      userId = newUser.id;
+    }
     
     // Check if platform already exists for this user
     const [existingPlatform] = await db.select()
       .from(platforms)
       .where(
-        eq(platforms.userId, userId) && 
-        eq(platforms.name, "slack")
+        and(
+          eq(platforms.userId, userId),
+          eq(platforms.name, "slack")
+        )
       );
     
     if (existingPlatform) {
@@ -91,7 +130,9 @@ export async function connectSlack(req: Request, res: Response) {
         accessToken: process.env.SLACK_BOT_TOKEN,
         refreshToken: null,
         tokenExpiry: null, // Bot tokens don't expire
-        isConnected: true
+        isConnected: true,
+        settings: {},
+        metadata: {}
       });
     }
     
