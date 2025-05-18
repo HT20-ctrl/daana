@@ -111,7 +111,7 @@ function AuthRouter() {
       <Route path="/signin">
         <SignInPage />
       </Route>
-      <Route path="/app/:path*">
+      <Route path="/app">
         <MainApp />
       </Route>
       <Route path="/dashboard">
