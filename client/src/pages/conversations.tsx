@@ -57,12 +57,13 @@ export default function Conversations() {
   };
 
   // Helper function to generate relative time
-  const getRelativeTime = (date: Date) => {
+  const getRelativeTime = (date: Date | null) => {
+    if (!date) return "No date";
     return formatDistanceToNow(new Date(date), { addSuffix: true });
   };
 
   // Helper function to get platform icon
-  const getPlatformIcon = (platformId?: number) => {
+  const getPlatformIcon = (platformId: number | null) => {
     switch (platformId) {
       case 1:
         return <SiFacebook className="h-5 w-5 text-blue-600" />;

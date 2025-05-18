@@ -145,15 +145,15 @@ export default function AiResponses() {
     if (timeFilter === "today") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(response => new Date(response.createdAt) >= today);
+      filtered = filtered.filter(response => response.createdAt && new Date(response.createdAt) >= today);
     } else if (timeFilter === "week") {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      filtered = filtered.filter(response => new Date(response.createdAt) >= weekAgo);
+      filtered = filtered.filter(response => response.createdAt && new Date(response.createdAt) >= weekAgo);
     } else if (timeFilter === "month") {
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
-      filtered = filtered.filter(response => new Date(response.createdAt) >= monthAgo);
+      filtered = filtered.filter(response => response.createdAt && new Date(response.createdAt) >= monthAgo);
     }
     
     return filtered;

@@ -254,7 +254,7 @@ export default function Settings() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Settings</h1>
             <p className="mt-1 text-sm text-gray-600">
               Manage your account settings and configure platform preferences.
             </p>
