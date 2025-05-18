@@ -256,10 +256,16 @@ export async function googleOAuthCallback(req: Request, res: Response) {
 // Helper function to exchange authorization code for tokens
 async function exchangeCodeForTokens(code: string, clientId: string, clientSecret: string, redirectUri: string) {
   try {
+    console.log(`Attempting token exchange with:
+      - Client ID: ${clientId.substring(0, 10)}...
+      - Redirect URI: ${redirectUri}
+      - Code length: ${code.length} characters`);
+    
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       },
       body: new URLSearchParams({
         code,
@@ -270,13 +276,20 @@ async function exchangeCodeForTokens(code: string, clientId: string, clientSecre
       })
     });
     
+    const responseText = await response.text();
+    console.log(`Google token response status: ${response.status}`);
+    
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error("Token exchange error:", errorData);
+      console.error("Token exchange error:", responseText);
       return null;
     }
     
-    return await response.json();
+    try {
+      return JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Error parsing token response:", parseError);
+      return null;
+    }
   } catch (error) {
     console.error("Error exchanging code for tokens:", error);
     return null;
