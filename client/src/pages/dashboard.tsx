@@ -2,12 +2,14 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Download, MessageSquare, Bot, User2, Heart } from "lucide-react";
+import { Download, MessageSquare, Bot, User2, Heart, FileDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import { exportAnalyticsToPdf } from "@/lib/pdfExport";
 import ConnectPlatformDialog from "@/components/shared/ConnectPlatformDialog";
 import StatCard from "@/components/dashboard/StatCard";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
@@ -54,6 +56,8 @@ export default function Dashboard() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
+  
+  const { toast } = useToast();
   
   // Determine if all data is still loading
   const isLoading = isLoadingAnalytics || isLoadingConversations || isLoadingPlatforms || isLoadingKnowledgeBase;
@@ -144,6 +148,45 @@ export default function Dashboard() {
     return "there";
   };
   
+  // Handle exporting analytics data to PDF
+  const handleExportAnalytics = () => {
+    if (!analytics || !platforms || !conversations) {
+      toast({
+        title: "Export failed",
+        description: "Some data is still loading. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Generate PDF with analytics data
+      exportAnalyticsToPdf(
+        analytics, 
+        conversations, 
+        platforms,
+        {
+          title: "Dana AI Analytics Report",
+          subtitle: `Dashboard Overview - ${timeRange === "7days" ? "Last 7 Days" : timeRange === "30days" ? "Last 30 Days" : "Last 90 Days"}`,
+          fileName: `dana-ai-analytics-report-${new Date().toISOString().split('T')[0]}.pdf`
+        }
+      );
+      
+      toast({
+        title: "Export successful",
+        description: "Your analytics report has been downloaded.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error exporting analytics to PDF:", error);
+      toast({
+        title: "Export failed",
+        description: "There was an error generating your report. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // For now, let's remove the skeleton loading to fix the white screen issue
   // We'll use the individual component loading states instead
 
@@ -158,9 +201,13 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
             <ConnectPlatformDialog />
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button 
+              variant="outline" 
+              onClick={handleExportAnalytics}
+              disabled={isLoading}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {isLoading ? "Loading..." : "Export Report"}
             </Button>
           </div>
         </div>
