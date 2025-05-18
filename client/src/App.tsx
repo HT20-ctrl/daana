@@ -21,7 +21,7 @@ import Settings from "@/pages/settings";
 import Search from "@/pages/search";
 import NotFound from "@/pages/not-found";
 import GoogleAuthPage from "@/pages/google-auth";
-import SimpleLandingPage from "@/pages/simple-landing";
+import LandingPage from "@/pages/landing";
 
 // Auth loading screen
 function LoadingScreen() {
@@ -95,13 +95,13 @@ function AuthRouter() {
         <GoogleAuthPage />
       </Route>
       <Route path="/landing">
-        <SimpleLandingPage />
+        <LandingPage />
       </Route>
       <Route path="/app">
         <MainApp />
       </Route>
       <Route>
-        <SimpleLandingPage />
+        <LandingPage />
       </Route>
     </Switch>
   );
