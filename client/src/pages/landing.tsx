@@ -1,8 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useState } from "react";
+import ScheduleDemo from "@/components/landing/ScheduleDemo";
+import Testimonials from "@/components/landing/Testimonials";
 
 export default function LandingPage() {
+  const [showDemoScheduler, setShowDemoScheduler] = useState(false);
+  
+  const handleOpenScheduler = () => {
+    setShowDemoScheduler(true);
+  };
+  
+  const handleCloseScheduler = () => {
+    setShowDemoScheduler(false);
+  };
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Hero section with nav */}
@@ -75,8 +87,8 @@ export default function LandingPage() {
               performance—all in one place.
             </p>
             <div className="mt-12 flex flex-col sm:flex-row gap-6 justify-center">
-              <a
-                href="/api/login" 
+              <button
+                onClick={handleOpenScheduler}
                 className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-blue-900/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-800/40 hover:-translate-y-1"
               >
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
@@ -86,7 +98,7 @@ export default function LandingPage() {
                   </svg>
                   <span>Schedule a Demo</span>
                 </div>
-              </a>
+              </button>
               <a 
                 href="#how-it-works"
                 className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border-2 border-white/20 hover:bg-white/20 hover:border-white/30 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1"
@@ -354,8 +366,8 @@ export default function LandingPage() {
           </p>
           
           <div className="mt-12 flex flex-col sm:flex-row gap-6 justify-center">
-            <a 
-              href="/api/login"
+            <button 
+              onClick={handleOpenScheduler}
               className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-blue-900/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-800/40 hover:-translate-y-1"
             >
               <div className="absolute top-0 -inset-x-full h-full w-1/2 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine"></div>
@@ -365,7 +377,7 @@ export default function LandingPage() {
                 </svg>
                 <span>Schedule a Demo</span>
               </div>
-            </a>
+            </button>
             <a 
               href="tel:+254759745785"
               className="relative overflow-hidden group bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/15 hover:border-white/30 rounded-full px-10 py-4 text-white font-semibold text-lg shadow-lg shadow-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1"
