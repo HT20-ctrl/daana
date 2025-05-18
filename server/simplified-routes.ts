@@ -739,27 +739,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/platforms/email/connect", async (req, res) => {
-    // For development purposes, create a mock platform since we don't have real credentials
-    if (!isEmailConfigured()) {
-      try {
-        const userId = "1"; // Demo user ID
-        const platform = await storage.createPlatform({
-          userId,
-          name: "email",
-          displayName: "Email Integration (Demo)",
-          accessToken: "mock-sendgrid-key",
-          refreshToken: null,
-          tokenExpiry: null, // API keys don't expire
-          isConnected: true
-        });
-        return res.redirect('/settings?email_connected=true');
-      } catch (error) {
-        console.error("Error creating mock Email connection:", error);
-        return res.status(500).json({ error: "Failed to create mock connection" });
-      }
-    } else {
-      connectEmail(req, res);
-    }
+    // Always use the real connect function which will handle Google OAuth
+    connectEmail(req, res);
   });
 
   app.get("/api/platforms/:platformId/email/messages", async (req, res) => {
