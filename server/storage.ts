@@ -361,8 +361,14 @@ export class MemStorage implements IStorage {
   async createPlatform(platformData: InsertPlatform): Promise<Platform> {
     const id = this.platformId++;
     const platform: Platform = {
-      ...platformData,
       id,
+      name: platformData.name,
+      userId: platformData.userId,
+      displayName: platformData.displayName,
+      accessToken: platformData.accessToken || null,
+      refreshToken: platformData.refreshToken || null,
+      tokenExpiry: platformData.tokenExpiry || null,
+      isConnected: platformData.isConnected || false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -393,12 +399,14 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
-    // Override with new data
-    Object.keys(platformData).forEach(key => {
-      if (platformData[key] !== undefined) {
-        updatedPlatform[key] = platformData[key];
-      }
-    });
+    // Override with new data - safely update allowed fields only
+    if (platformData.name !== undefined) updatedPlatform.name = platformData.name;
+    if (platformData.userId !== undefined) updatedPlatform.userId = platformData.userId;
+    if (platformData.displayName !== undefined) updatedPlatform.displayName = platformData.displayName;
+    if (platformData.accessToken !== undefined) updatedPlatform.accessToken = platformData.accessToken;
+    if (platformData.refreshToken !== undefined) updatedPlatform.refreshToken = platformData.refreshToken;
+    if (platformData.tokenExpiry !== undefined) updatedPlatform.tokenExpiry = platformData.tokenExpiry;
+    if (platformData.isConnected !== undefined) updatedPlatform.isConnected = platformData.isConnected;
     
     // Special handling for disconnection
     if (platformData.isConnected === false) {
@@ -470,11 +478,16 @@ export class MemStorage implements IStorage {
   async createConversation(conversationData: InsertConversation): Promise<Conversation> {
     const id = this.conversationId++;
     const conversation: Conversation = {
-      ...conversationData,
       id,
+      userId: conversationData.userId,
+      customerName: conversationData.customerName,
+      platformId: conversationData.platformId ?? null,
+      customerAvatar: conversationData.customerAvatar ?? null,
+      lastMessage: conversationData.lastMessage ?? null,
+      lastMessageAt: conversationData.lastMessageAt ?? new Date(),
+      isActive: conversationData.isActive ?? null,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      lastMessageAt: conversationData.lastMessageAt || new Date(),
+      updatedAt: new Date()
     };
     
     this.conversations.set(id, conversation);
