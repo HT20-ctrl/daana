@@ -227,7 +227,8 @@ export default function AiResponses() {
   };
 
   // Helper function to generate relative time
-  const getRelativeTime = (date: Date) => {
+  const getRelativeTime = (date: Date | null) => {
+    if (!date) return "No date";
     return formatDistanceToNow(new Date(date), { addSuffix: true });
   };
 
