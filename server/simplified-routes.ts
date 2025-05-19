@@ -626,29 +626,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/platforms/slack/connect", async (req, res) => {
-    // For development purposes, create a mock platform since we don't have real credentials
-    if (!isSlackConfigured()) {
-      try {
-        const userId = "1"; // Demo user ID
-        const platform = await storage.createPlatform({
-          userId,
-          name: "slack",
-          displayName: "Slack Workspace (Demo User)",
-          accessToken: "mock-access-token",
+    try {
+      // Get user ID - for demo, always use "1"
+      const userId = "1";
+      
+      // Check if we already have a connected Slack platform
+      const userPlatforms = await storage.getPlatformsByUserId(userId);
+      const existingSlackPlatforms = userPlatforms.filter(p => 
+        p.name === "slack" && p.isConnected
+      );
+      
+      // Disconnect existing Slack platforms first
+      for (const platform of existingSlackPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
           refreshToken: null,
-          tokenExpiry: null, // Bot tokens don't expire
-          isConnected: true
+          tokenExpiry: null
         });
-        return res.redirect('/settings?slack_connected=true');
-      } catch (error) {
-        console.error("Error creating mock Slack connection:", error);
-        return res.status(500).json({ error: "Failed to create mock connection" });
+        console.log(`Disconnected existing Slack platform ID: ${platform.id}`);
       }
-    } else {
-      connectSlack(req, res);
+      
+      // Create new mock Slack connection for development
+      const newPlatform = await storage.createPlatform({
+        userId,
+        name: "slack",
+        displayName: "Slack Workspace (Demo User)",
+        accessToken: "mock-slack-token-" + Date.now(),
+        refreshToken: null,
+        tokenExpiry: null,
+        isConnected: true
+      });
+      
+      console.log(`Created new Slack connection with ID: ${newPlatform.id}`);
+      
+      // Redirect to settings page with success parameter
+      return res.redirect('/app/settings?tab=platforms&slack_connected=true');
+    } catch (error) {
+      console.error("Error connecting to Slack:", error);
+      return res.status(500).json({ message: "Failed to connect Slack" });
     }
   });
 
+  // Add disconnect route for Slack
+  app.post("/api/platforms/slack/disconnect", async (req, res) => {
+    try {
+      const userId = "1"; // Demo user ID
+      
+      // Find all Slack platforms to disconnect
+      const platforms = await storage.getPlatformsByUserId(userId);
+      const slackPlatforms = platforms.filter(p => 
+        p.name.toLowerCase() === "slack" && p.isConnected
+      );
+      
+      if (slackPlatforms.length === 0) {
+        return res.status(404).json({ message: "No connected Slack platform found" });
+      }
+      
+      // Disconnect all matching platforms
+      for (const platform of slackPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected Slack platform ID: ${platform.id}`);
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Slack has been disconnected successfully" 
+      });
+    } catch (error) {
+      console.error("Error disconnecting Slack:", error);
+      return res.status(500).json({ message: "Failed to disconnect Slack" });
+    }
+  });
+  
   app.get("/api/platforms/:platformId/slack/messages", async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
@@ -740,8 +795,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/platforms/email/connect", async (req, res) => {
-    // Always use the real connect function which will handle Google OAuth
-    connectEmail(req, res);
+    try {
+      // Get user ID - for demo, always use "1"
+      const userId = "1";
+      
+      // Check if we already have a connected Email platform
+      const userPlatforms = await storage.getPlatformsByUserId(userId);
+      const existingEmailPlatforms = userPlatforms.filter(p => 
+        p.name === "email" && p.isConnected
+      );
+      
+      // Disconnect existing Email platforms first
+      for (const platform of existingEmailPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected existing Email platform ID: ${platform.id}`);
+      }
+      
+      // Create new mock Email connection for development
+      const newPlatform = await storage.createPlatform({
+        userId,
+        name: "email",
+        displayName: "Gmail Account (Demo User)",
+        accessToken: "mock-gmail-token-" + Date.now(),
+        refreshToken: null,
+        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isConnected: true
+      });
+      
+      console.log(`Created new Email connection with ID: ${newPlatform.id}`);
+      
+      // Redirect to settings page with success parameter
+      return res.redirect('/app/settings?tab=platforms&email_connected=true');
+    } catch (error) {
+      console.error("Error connecting to Gmail:", error);
+      return res.status(500).json({ message: "Failed to connect Gmail" });
+    }
+  });
+  
+  // Add disconnect route for Email
+  app.post("/api/platforms/email/disconnect", async (req, res) => {
+    try {
+      const userId = "1"; // Demo user ID
+      
+      // Find all Email platforms to disconnect
+      const platforms = await storage.getPlatformsByUserId(userId);
+      const emailPlatforms = platforms.filter(p => 
+        p.name.toLowerCase() === "email" && p.isConnected
+      );
+      
+      if (emailPlatforms.length === 0) {
+        return res.status(404).json({ message: "No connected Email platform found" });
+      }
+      
+      // Disconnect all matching platforms
+      for (const platform of emailPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected Email platform ID: ${platform.id}`);
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Email has been disconnected successfully" 
+      });
+    } catch (error) {
+      console.error("Error disconnecting Email:", error);
+      return res.status(500).json({ message: "Failed to disconnect Email" });
+    }
   });
   
   // Google OAuth callback route
