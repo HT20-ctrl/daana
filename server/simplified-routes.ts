@@ -964,14 +964,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // HubSpot platform routes
   app.get("/api/platforms/hubspot/status", getHubSpotStatus);
-  app.post("/api/platforms/hubspot/connect", connectHubSpot);
+  
+  app.get("/api/platforms/hubspot/connect", async (req, res) => {
+    try {
+      // Get user ID - for demo, always use "1" 
+      const userId = "1";
+      
+      // Check if we already have a connected HubSpot platform
+      const userPlatforms = await storage.getPlatformsByUserId(userId);
+      const existingHubSpotPlatforms = userPlatforms.filter(p => 
+        p.name.toLowerCase() === "hubspot" && p.isConnected
+      );
+      
+      // Disconnect existing HubSpot platforms first
+      for (const platform of existingHubSpotPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected existing HubSpot platform ID: ${platform.id}`);
+      }
+      
+      // Create new mock HubSpot connection for development
+      const newPlatform = await storage.createPlatform({
+        userId,
+        name: "hubspot",
+        displayName: "HubSpot CRM",
+        accessToken: "mock-hubspot-token-" + Date.now(),
+        refreshToken: "mock-hubspot-refresh-token",
+        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isConnected: true
+      });
+      
+      console.log(`Created new HubSpot connection with ID: ${newPlatform.id}`);
+      
+      // Redirect to settings page with success parameter
+      return res.redirect('/app/settings?tab=platforms&hubspot_connected=true');
+    } catch (error) {
+      console.error("Error connecting to HubSpot:", error);
+      return res.status(500).json({ message: "Failed to connect to HubSpot" });
+    }
+  });
+  
+  app.post("/api/platforms/hubspot/disconnect", async (req, res) => {
+    try {
+      const userId = "1"; // Demo user ID
+      
+      // Find all HubSpot platforms to disconnect
+      const platforms = await storage.getPlatformsByUserId(userId);
+      const hubspotPlatforms = platforms.filter(p => 
+        p.name.toLowerCase() === "hubspot" && p.isConnected
+      );
+      
+      if (hubspotPlatforms.length === 0) {
+        return res.status(404).json({ message: "No connected HubSpot platform found" });
+      }
+      
+      // Disconnect all matching platforms
+      for (const platform of hubspotPlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected HubSpot platform ID: ${platform.id}`);
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "HubSpot has been disconnected successfully" 
+      });
+    } catch (error) {
+      console.error("Error disconnecting HubSpot:", error);
+      return res.status(500).json({ message: "Failed to disconnect HubSpot" });
+    }
+  });
+  
   app.get("/api/platforms/hubspot/callback", hubspotCallback);
   app.get("/api/platforms/hubspot/contacts", getHubSpotContacts);
   app.post("/api/platforms/hubspot/contacts", createHubSpotContact);
   
   // Salesforce platform routes
   app.get("/api/platforms/salesforce/status", getSalesforceStatus);
-  app.post("/api/platforms/salesforce/connect", connectSalesforce);
+  
+  app.get("/api/platforms/salesforce/connect", async (req, res) => {
+    try {
+      // Get user ID - for demo, always use "1"
+      const userId = "1";
+      
+      // Check if we already have a connected Salesforce platform
+      const userPlatforms = await storage.getPlatformsByUserId(userId);
+      const existingSalesforcePlatforms = userPlatforms.filter(p => 
+        p.name.toLowerCase() === "salesforce" && p.isConnected
+      );
+      
+      // Disconnect existing Salesforce platforms first
+      for (const platform of existingSalesforcePlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected existing Salesforce platform ID: ${platform.id}`);
+      }
+      
+      // Create new mock Salesforce connection for development
+      const newPlatform = await storage.createPlatform({
+        userId,
+        name: "salesforce",
+        displayName: "Salesforce CRM",
+        accessToken: "mock-salesforce-token-" + Date.now(),
+        refreshToken: "mock-salesforce-refresh-token",
+        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isConnected: true
+      });
+      
+      console.log(`Created new Salesforce connection with ID: ${newPlatform.id}`);
+      
+      // Redirect to settings page with success parameter
+      return res.redirect('/app/settings?tab=platforms&salesforce_connected=true');
+    } catch (error) {
+      console.error("Error connecting to Salesforce:", error);
+      return res.status(500).json({ message: "Failed to connect to Salesforce" });
+    }
+  });
+  
+  app.post("/api/platforms/salesforce/disconnect", async (req, res) => {
+    try {
+      const userId = "1"; // Demo user ID
+      
+      // Find all Salesforce platforms to disconnect
+      const platforms = await storage.getPlatformsByUserId(userId);
+      const salesforcePlatforms = platforms.filter(p => 
+        p.name.toLowerCase() === "salesforce" && p.isConnected
+      );
+      
+      if (salesforcePlatforms.length === 0) {
+        return res.status(404).json({ message: "No connected Salesforce platform found" });
+      }
+      
+      // Disconnect all matching platforms
+      for (const platform of salesforcePlatforms) {
+        await storage.updatePlatform(platform.id, {
+          isConnected: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null
+        });
+        console.log(`Disconnected Salesforce platform ID: ${platform.id}`);
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Salesforce has been disconnected successfully" 
+      });
+    } catch (error) {
+      console.error("Error disconnecting Salesforce:", error);
+      return res.status(500).json({ message: "Failed to disconnect Salesforce" });
+    }
+  });
+  
   app.get("/api/platforms/salesforce/callback", salesforceCallback);
   app.get("/api/platforms/salesforce/leads", getSalesforceLeads);
   app.post("/api/platforms/salesforce/leads", createSalesforceLead);
