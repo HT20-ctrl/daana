@@ -1285,6 +1285,8 @@ export default function Settings() {
                           description: "Please wait while we update your preferences"
                         });
                         
+                        console.log("Sending notification settings:", notificationSettings);
+                        
                         // Call the API endpoint to update notification settings
                         const response = await fetch("/api/user/notification-settings", {
                           method: "POST",
@@ -1295,12 +1297,23 @@ export default function Settings() {
                         });
                         
                         if (!response.ok) {
-                          throw new Error(`Failed to update notification settings: ${response.statusText}`);
+                          const errorText = await response.text();
+                          throw new Error(`Failed to update notification settings: ${errorText || response.statusText}`);
                         }
                         
-                        // Parse the response
-                        const result = await response.json();
-                        console.log("Notification settings updated successfully:", result);
+                        // Safer approach to parse response
+                        const responseText = await response.text();
+                        console.log("Raw notification response:", responseText);
+                        
+                        let result;
+                        // Only try to parse if it's valid JSON
+                        if (responseText.trim().startsWith('{')) {
+                          result = JSON.parse(responseText);
+                          console.log("Notification settings updated successfully:", result);
+                        } else {
+                          console.log("Response is not valid JSON, but request was successful");
+                          result = { success: true };
+                        }
                         
                         toast({
                           title: "Notification settings saved",
