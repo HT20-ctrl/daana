@@ -585,13 +585,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For this demo, we'll store settings in a userSettings field
       const currentSettings = user.userSettings || {};
       
-      const updatedUser = await storage.upsertUser({
-        ...user,
+      // Create a clean record with just the ID and userSettings
+      const userUpdate = {
+        id: userId,
         userSettings: {
           ...currentSettings,
           aiSettings
         }
-      });
+      };
+      
+      console.log("Updating user with AI settings:", userUpdate);
+      
+      const updatedUser = await storage.upsertUser(userUpdate);
       
       res.json({ success: true, settings: updatedUser.userSettings?.aiSettings });
     } catch (error) {
@@ -618,13 +623,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user with new notification settings
       const currentSettings = user.userSettings || {};
       
-      const updatedUser = await storage.upsertUser({
-        ...user,
+      // Create a clean record with just the ID and userSettings
+      const userUpdate = {
+        id: userId,
         userSettings: {
           ...currentSettings,
           notificationSettings
         }
-      });
+      };
+      
+      console.log("Updating user with notification settings:", userUpdate);
+      
+      const updatedUser = await storage.upsertUser(userUpdate);
       
       res.json({ 
         success: true, 
