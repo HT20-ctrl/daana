@@ -544,21 +544,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { firstName, lastName, email } = req.body;
+      const profileData = req.body;
       
-      console.log("Updating user profile:", { userId, firstName, lastName, email });
+      console.log("Updating user profile:", { userId, profileData });
       
-      // Update user profile in storage
-      const updatedUser = await storage.upsertUser({
-        id: userId,
-        firstName,
-        lastName,
-        email,
-        // Keep existing profile image URL if present
-        profileImageUrl: req.user.claims.profile_image_url || null
-      });
+      // Get current user to merge settings
+      let user = await storage.getUser(userId);
       
-      res.json(updatedUser);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Handle both old format and new format profile updates
+      if (profileData.firstName || profileData.lastName || profileData.email) {
+        // Old format - update user fields directly
+        const updatedUser = await storage.upsertUser({
+          id: userId,
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          email: profileData.email,
+          // Keep existing profile image URL if present
+          profileImageUrl: req.user.claims.profile_image_url || null
+        });
+        
+        res.json(updatedUser);
+      } else if (profileData.profileSettings) {
+        // New format - update user settings JSON
+        const currentSettings = user.userSettings || {};
+        
+        // Create a clean record with just the ID and userSettings
+        const userUpdate = {
+          id: userId,
+          userSettings: {
+            ...currentSettings,
+            profileSettings: profileData.profileSettings
+          }
+        };
+        
+        console.log("Updating user with profile settings:", userUpdate);
+        
+        const updatedUser = await storage.upsertUser(userUpdate);
+        
+        // Make sure we're sending a properly formatted response
+        res.status(200).json({ 
+          success: true,
+          settings: updatedUser.userSettings
+        });
+      } else {
+        res.status(400).json({ message: "Invalid profile data format" });
+      }
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update user profile" });

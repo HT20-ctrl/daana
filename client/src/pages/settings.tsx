@@ -187,22 +187,50 @@ export default function Settings() {
         description: "Please wait while we update your information"
       });
       
+      // Prepare profile data with new structure
+      const profileData = {
+        profileSettings: {
+          name: profileForm.firstName, // Map to the new structure
+          role: profileForm.role,
+          company: profileForm.company
+        }
+      };
+      
+      console.log("Sending profile update:", profileData);
+      
       // Call the API endpoint to update profile
       const response = await fetch("/api/user/profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(profileForm)
+        body: JSON.stringify(profileData)
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to update profile: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to update profile: ${errorText || response.statusText}`);
       }
       
-      // Parse the response
-      const updatedUser = await response.json();
-      console.log("Profile updated successfully:", updatedUser);
+      // Parse the response safely
+      let updatedUser;
+      try {
+        const responseText = await response.text();
+        console.log("Raw profile update response:", responseText);
+        
+        // Only try to parse JSON if it looks like JSON
+        if (responseText.trim().startsWith('{')) {
+          updatedUser = JSON.parse(responseText);
+          console.log("Profile updated successfully:", updatedUser);
+        } else {
+          console.log("Profile response not in JSON format:", responseText);
+          updatedUser = { success: true };
+        }
+      } catch (parseError) {
+        console.error("Error parsing profile response:", parseError);
+        // Continue with a fallback result
+        updatedUser = { success: true };
+      }
       
       // Force refresh of user data
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
