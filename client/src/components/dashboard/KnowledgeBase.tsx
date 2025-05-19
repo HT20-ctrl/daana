@@ -193,12 +193,21 @@ export default function KnowledgeBase({ knowledgeBase = [], isLoading }: Knowled
               </li>
             ) : (
               knowledgeBase.map((item) => (
-                <li key={item.id} className="py-3 flex justify-between items-center">
-                  <div className="flex items-center">
+                <li key={item.id} className="py-3 flex justify-between items-center hover:bg-gray-50 rounded-md px-2">
+                  <div className="flex items-center overflow-hidden">
                     {getFileIcon(item.fileType)}
-                    <span className="text-sm text-gray-900">{item.fileName}</span>
+                    <span className="text-sm text-gray-900 truncate max-w-[180px]" title={item.fileName}>
+                      {item.fileName}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">{formatFileSize(item.fileSize)}</span>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-500 mr-2">
+                      {formatFileSize(item.fileSize)}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {new Date(item.createdAt || Date.now()).toLocaleDateString()}
+                    </span>
+                  </div>
                 </li>
               ))
             )}
