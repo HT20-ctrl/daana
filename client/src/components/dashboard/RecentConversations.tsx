@@ -4,10 +4,11 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Bot } from "lucide-react";
 import { Conversation } from "@shared/schema";
-import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { SiFacebook, SiInstagram, SiWhatsapp } from "react-icons/si";
 import { formatDistanceToNow } from "date-fns";
+import * as React from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface RecentConversationsProps {
   conversations?: Conversation[];
@@ -41,14 +42,36 @@ export default function RecentConversations({ conversations = [], isLoading }: R
   };
 
   // Generate AI response
+  const { toast } = useToast();
+  const [generatingConversationId, setGeneratingConversationId] = React.useState<number | null>(null);
+  
   const handleGenerateAiResponse = async (conversationId: number) => {
     try {
+      setGeneratingConversationId(conversationId);
+      
+      toast({
+        title: "Generating AI response...",
+        description: "This may take a few seconds",
+      });
+      
       await apiRequest("POST", `/api/ai/generate`, {
         conversationId,
         message: "Please generate a response"
       });
+      
+      toast({
+        title: "AI response generated",
+        description: "Response has been created successfully",
+      });
     } catch (error) {
       console.error("Error generating AI response:", error);
+      toast({
+        title: "Error generating response",
+        description: "There was an error generating the AI response",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingConversationId(null);
     }
   };
 
