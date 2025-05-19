@@ -57,6 +57,7 @@ export default function KnowledgeBase({ knowledgeBase = [], isLoading }: Knowled
       const formData = new FormData();
       formData.append("file", selectedFile);
 
+      // Using the correct API endpoint for knowledge base upload
       const response = await fetch("/api/knowledge-base", {
         method: "POST",
         body: formData,
