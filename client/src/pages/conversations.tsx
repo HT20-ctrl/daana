@@ -105,6 +105,14 @@ export default function Conversations() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
+            <div className="flex items-center gap-2 mb-2">
+              <a href="/dashboard" className="text-blue-600 hover:text-blue-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                <span className="ml-1">Back to Dashboard</span>
+              </a>
+            </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Conversations</h1>
             <p className="mt-1 text-sm text-gray-600">Manage all your customer conversations across platforms.</p>
           </div>

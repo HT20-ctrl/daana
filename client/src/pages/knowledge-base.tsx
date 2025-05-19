@@ -188,6 +188,14 @@ export default function KnowledgeBasePage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <a href="/dashboard" className="text-blue-600 hover:text-blue-800 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+              <span className="ml-1">Back to Dashboard</span>
+            </a>
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
           <p className="text-gray-500 mt-1">Manage documents used by the AI to generate customer responses</p>
         </div>
