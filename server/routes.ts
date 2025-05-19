@@ -583,10 +583,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user with new AI settings
       // In a real implementation, we would have a separate table for user settings
       // For this demo, we'll store settings in a userSettings field
+      const currentSettings = user.userSettings || {};
+      
       const updatedUser = await storage.upsertUser({
         ...user,
         userSettings: {
-          ...user.userSettings,
+          ...currentSettings,
           aiSettings
         }
       });
@@ -614,10 +616,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update user with new notification settings
+      const currentSettings = user.userSettings || {};
+      
       const updatedUser = await storage.upsertUser({
         ...user,
         userSettings: {
-          ...user.userSettings,
+          ...currentSettings,
           notificationSettings
         }
       });

@@ -88,6 +88,23 @@ export class MemStorage implements IStorage {
       lastName: "User",
       role: "admin",
       profileImageUrl: "https://i.pravatar.cc/300?u=demo@example.com",
+      userSettings: {
+        aiSettings: {
+          model: "gpt-4o",
+          temperature: 0.7,
+          maxTokens: 500,
+          responseTimeout: 30,
+          enableKnowledgeBase: true,
+          fallbackToHuman: true
+        },
+        notificationSettings: {
+          emailNotifications: true,
+          desktopNotifications: true,
+          newMessageAlerts: true,
+          assignmentNotifications: true,
+          summaryReports: true
+        }
+      },
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -325,6 +342,7 @@ export class MemStorage implements IStorage {
       lastName: userData.lastName ?? existingUser?.lastName ?? null,
       profileImageUrl: userData.profileImageUrl ?? existingUser?.profileImageUrl ?? null,
       role: userData.role ?? existingUser?.role ?? "user",
+      userSettings: userData.userSettings ?? existingUser?.userSettings ?? {}, // Handle userSettings field
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
