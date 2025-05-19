@@ -49,27 +49,20 @@ export default function RecentConversations({ conversations = [], isLoading }: R
     try {
       setGeneratingConversationId(conversationId);
       
-      toast({
-        title: "Generating AI response...",
-        description: "This may take a few seconds",
-      });
+      // Show generating notification
+      console.log("Generating AI response for conversation:", conversationId);
       
+      // Generate response
       await apiRequest("POST", `/api/ai/generate`, {
         conversationId,
         message: "Please generate a response"
       });
       
-      toast({
-        title: "AI response generated",
-        description: "Response has been created successfully",
-      });
+      // Show success notification
+      console.log("AI response generated successfully");
+      
     } catch (error) {
       console.error("Error generating AI response:", error);
-      toast({
-        title: "Error generating response",
-        description: "There was an error generating the AI response",
-        variant: "destructive",
-      });
     } finally {
       setGeneratingConversationId(null);
     }
@@ -122,8 +115,13 @@ export default function RecentConversations({ conversations = [], isLoading }: R
                   variant="outline" 
                   className="bg-primary-100 hover:bg-primary-200 text-primary-700 border-transparent"
                   onClick={() => handleGenerateAiResponse(conversation.id)}
+                  disabled={generatingConversationId === conversation.id}
                 >
-                  <Bot className="h-4 w-4 mr-1" /> AI Response
+                  {generatingConversationId === conversation.id ? (
+                    <>Generating...</>
+                  ) : (
+                    <><Bot className="h-4 w-4 mr-1" /> AI Response</>
+                  )}
                 </Button>
                 <a href={`/conversations/${conversation.id}`}>
                   <Button size="sm" variant="outline">
