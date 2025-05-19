@@ -428,6 +428,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
+    console.log("Knowledge base file upload request received", {
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length'],
+      body: req.body ? 'Has body' : 'No body',
+      files: req.files ? 'Has files' : 'No files'
+    });
+    
     // Handle file upload with error handling
     upload.single("file")(req, res, async (err) => {
       if (err) {
@@ -437,22 +444,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const userId = req.user.claims.sub;
+        console.log("Processing upload for user:", userId);
         const file = req.file;
         
         if (!file) {
+          console.error("No file found in request");
           return res.status(400).json({ message: "No file uploaded" });
         }
         
-        console.log("File uploaded successfully:", file.originalname, "Path:", file.path);
+        console.log("File uploaded successfully:", {
+          filename: file.originalname,
+          path: file.path,
+          size: file.size,
+          mimetype: file.mimetype
+        });
         
         // Extract text from the file
         let content;
         try {
+          console.log("Attempting to extract text from:", file.path);
           content = await extractTextFromFiles(file.path, file.mimetype);
+          console.log("Text extraction successful, content length:", content.length);
         } catch (extractError) {
           console.error("Error extracting content:", extractError);
           // Use a placeholder for content if extraction fails
           content = `Content from ${file.originalname} (extraction partially failed)`;
+          console.log("Using fallback content");
         }
         
         // Get file type
