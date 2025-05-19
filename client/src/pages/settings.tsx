@@ -157,11 +157,22 @@ export default function Settings() {
     e.preventDefault();
     
     try {
-      // In production, this would call an API endpoint to update AI settings
+      // Show a loading toast
       toast({
-        title: "AI settings updated",
-        description: "Your AI configuration has been updated successfully."
+        title: "Saving AI settings...",
+        description: "Updating your AI configuration"
       });
+      
+      // Simulate API call with a short delay
+      setTimeout(() => {
+        // In a production environment, this would call an API endpoint
+        console.log("AI settings being saved:", aiSettings);
+        
+        toast({
+          title: "AI settings updated",
+          description: `Your AI configuration has been updated successfully. Using ${aiSettings.model} with temperature ${aiSettings.temperature}.`
+        });
+      }, 800);
     } catch (error) {
       toast({
         title: "Update failed",
@@ -1044,7 +1055,13 @@ export default function Settings() {
                       <Switch
                         id="emailNotifications"
                         checked={notificationSettings.emailNotifications}
-                        onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, emailNotifications: checked })}
+                        onCheckedChange={(checked) => {
+                          setNotificationSettings({ ...notificationSettings, emailNotifications: checked });
+                          toast({
+                            title: checked ? "Email notifications enabled" : "Email notifications disabled",
+                            description: checked ? "You will now receive email notifications" : "You will no longer receive email notifications",
+                          });
+                        }}
                       />
                     </div>
                     
