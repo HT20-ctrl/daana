@@ -18,6 +18,13 @@ const isAuthenticated = (req: any, res: any, next: any) => {
 import multer from "multer";
 import { generateAIResponse, extractTextFromFiles } from "./ai";
 import { z } from "zod";
+import { 
+  getUserNotifications, 
+  markNotificationRead,
+  sendNotification,
+  type NotificationType,
+  type NotificationData
+} from './services/notificationService';
 // import { WebSocketServer } from "ws";
 import fs from "fs";
 import path from "path";
