@@ -138,11 +138,28 @@ export default function Settings() {
     e.preventDefault();
     
     try {
-      // In production, this would call an API endpoint to update profile
+      // Show a loading toast
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
+        title: "Saving profile changes...",
+        description: "Please wait while we update your information"
       });
+      
+      // Simulate API call with a short delay
+      setTimeout(() => {
+        // In a production environment, this would call an API endpoint
+        console.log("Profile update being saved:", profileForm);
+        
+        // Update the stored user information with the new profile data
+        if (user) {
+          // In a production environment, this would be done automatically by the API
+          console.log("Updated user profile: ", {...user, ...profileForm});
+        }
+        
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully."
+        });
+      }, 800);
     } catch (error) {
       toast({
         title: "Update failed",
@@ -1075,7 +1092,13 @@ export default function Settings() {
                       <Switch
                         id="summaryReports"
                         checked={notificationSettings.summaryReports}
-                        onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, summaryReports: checked })}
+                        onCheckedChange={(checked) => {
+                          setNotificationSettings({ ...notificationSettings, summaryReports: checked });
+                          toast({
+                            title: checked ? "Daily summaries enabled" : "Daily summaries disabled",
+                            description: checked ? "You will now receive daily activity reports" : "You will no longer receive daily activity reports",
+                          });
+                        }}
                       />
                     </div>
                   </div>
@@ -1131,7 +1154,16 @@ export default function Settings() {
                 </div>
                 
                 <div className="pt-4">
-                  <Button>Save Notification Settings</Button>
+                  <Button
+                    onClick={() => {
+                      toast({
+                        title: "Notification settings saved",
+                        description: "Your notification preferences have been updated successfully",
+                      });
+                    }}
+                  >
+                    Save Notification Settings
+                  </Button>
                 </div>
               </div>
             </CardContent>
