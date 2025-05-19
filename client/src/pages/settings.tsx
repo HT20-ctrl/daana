@@ -15,6 +15,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Define interfaces for user settings
+interface AISettings {
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  responseTimeout: number;
+  enableKnowledgeBase: boolean;
+  fallbackToHuman: boolean;
+}
+
+interface NotificationSettings {
+  emailNotifications: boolean;
+  desktopNotifications: boolean;
+  newMessageAlerts: boolean;
+  assignmentNotifications: boolean;
+  summaryReports: boolean;
+}
+
+interface UserSettings {
+  aiSettings?: AISettings;
+  notificationSettings?: NotificationSettings;
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,6 +147,16 @@ export default function Settings() {
     fallbackToHuman: true
   });
   
+  // Get initial AI settings from user data if available
+  useEffect(() => {
+    if (user && user.userSettings && typeof user.userSettings === 'object') {
+      const settings = user.userSettings as UserSettings;
+      if (settings.aiSettings) {
+        setAiSettings(settings.aiSettings);
+      }
+    }
+  }, [user]);
+  
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -132,6 +165,16 @@ export default function Settings() {
     assignmentNotifications: true,
     summaryReports: true,
   });
+  
+  // Get initial notification settings from user data if available
+  useEffect(() => {
+    if (user && user.userSettings && typeof user.userSettings === 'object') {
+      const settings = user.userSettings as UserSettings;
+      if (settings.notificationSettings) {
+        setNotificationSettings(settings.notificationSettings);
+      }
+    }
+  }, [user]);
   
   // Handle profile update
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -189,13 +232,25 @@ export default function Settings() {
         description: "Updating your AI configuration"
       });
       
+      // Make sure we're sending the correct data types
+      const sanitizedSettings = {
+        model: aiSettings.model,
+        temperature: Number(aiSettings.temperature),
+        maxTokens: Number(aiSettings.maxTokens),
+        responseTimeout: Number(aiSettings.responseTimeout),
+        enableKnowledgeBase: Boolean(aiSettings.enableKnowledgeBase),
+        fallbackToHuman: Boolean(aiSettings.fallbackToHuman)
+      };
+      
+      console.log("Sending AI settings:", sanitizedSettings);
+      
       // Call the API endpoint to update AI settings
       const response = await fetch("/api/user/ai-settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(aiSettings)
+        body: JSON.stringify(sanitizedSettings)
       });
       
       if (!response.ok) {
