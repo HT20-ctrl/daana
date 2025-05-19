@@ -16,24 +16,27 @@ interface RecentConversationsProps {
 
 export default function RecentConversations({ conversations = [], isLoading }: RecentConversationsProps) {
   // Helper function to get appropriate icon based on platform
-  const getPlatformIcon = (platformId?: number) => {
+  const getPlatformIcon = (platformId: number | undefined | null) => {
     // Simplified for demo - in real app would check platform name
-    if (platformId === 1) return <SiFacebook className="mr-1" />;
-    if (platformId === 2) return <SiInstagram className="mr-1" />;
-    if (platformId === 3) return <SiWhatsapp className="mr-1" />;
+    const id = platformId || 0;
+    if (id === 1) return <SiFacebook className="mr-1" />;
+    if (id === 2) return <SiInstagram className="mr-1" />;
+    if (id === 3) return <SiWhatsapp className="mr-1" />;
     return <SiFacebook className="mr-1" />;
   };
 
   // Helper function to get appropriate color based on platform
-  const getPlatformColor = (platformId?: number) => {
-    if (platformId === 1) return "bg-blue-100 text-blue-800";
-    if (platformId === 2) return "bg-purple-100 text-purple-800";
-    if (platformId === 3) return "bg-green-100 text-green-800";
+  const getPlatformColor = (platformId: number | undefined | null) => {
+    const id = platformId || 0;
+    if (id === 1) return "bg-blue-100 text-blue-800";
+    if (id === 2) return "bg-purple-100 text-purple-800";
+    if (id === 3) return "bg-green-100 text-green-800";
     return "bg-gray-100 text-gray-800";
   };
 
   // Helper function to generate relative time
-  const getRelativeTime = (date: Date) => {
+  const getRelativeTime = (date: Date | null) => {
+    if (!date) return 'Unknown time';
     return formatDistanceToNow(new Date(date), { addSuffix: true });
   };
 
@@ -53,9 +56,9 @@ export default function RecentConversations({ conversations = [], isLoading }: R
     <Card className="shadow rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "600ms" }}>
       <CardHeader className="px-4 py-5 sm:px-6 flex justify-between items-center">
         <CardTitle className="text-lg font-medium leading-6 text-gray-900">Recent Conversations</CardTitle>
-        <Link href="/conversations" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+        <a href="/conversations" className="text-sm font-medium text-primary-600 hover:text-primary-500">
           View all
-        </Link>
+        </a>
       </CardHeader>
       <div className="border-t border-gray-200 divide-y divide-gray-200">
         {isLoading ? (
@@ -83,8 +86,8 @@ export default function RecentConversations({ conversations = [], isLoading }: R
                   <p className="text-sm text-gray-500 truncate">{conversation.lastMessage}</p>
                 </div>
                 <div className="ml-2 flex-shrink-0 flex">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlatformColor(conversation.platformId)}`}>
-                    {getPlatformIcon(conversation.platformId)}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlatformColor(conversation.platformId ?? undefined)}`}>
+                    {getPlatformIcon(conversation.platformId ?? undefined)}
                     {conversation.platformId === 1 ? "Facebook" : 
                       conversation.platformId === 2 ? "Instagram" : "WhatsApp"}
                   </span>
@@ -99,11 +102,11 @@ export default function RecentConversations({ conversations = [], isLoading }: R
                 >
                   <Bot className="h-4 w-4 mr-1" /> AI Response
                 </Button>
-                <Link href={`/conversations/${conversation.id}`}>
+                <a href={`/conversations/${conversation.id}`}>
                   <Button size="sm" variant="outline">
                     Reply
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
           ))
