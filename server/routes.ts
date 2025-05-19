@@ -598,7 +598,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedUser = await storage.upsertUser(userUpdate);
       
-      res.json({ success: true, settings: updatedUser.userSettings?.aiSettings });
+      // Make sure we're sending a properly formatted response
+      const userWithSettings = updatedUser as any;
+      res.status(200).json({ 
+        success: true, 
+        settings: userWithSettings.userSettings?.aiSettings || null
+      });
     } catch (error) {
       console.error("Error updating AI settings:", error);
       res.status(500).json({ message: "Failed to update AI settings" });
@@ -636,9 +641,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedUser = await storage.upsertUser(userUpdate);
       
-      res.json({ 
-        success: true, 
-        settings: updatedUser.userSettings?.notificationSettings 
+      // Make sure we're sending a properly formatted response
+      const userWithSettings = updatedUser as any;
+      res.status(200).json({ 
+        success: true,
+        settings: userWithSettings.userSettings?.notificationSettings || null
       });
     } catch (error) {
       console.error("Error updating notification settings:", error);

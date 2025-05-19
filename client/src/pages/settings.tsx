@@ -254,12 +254,30 @@ export default function Settings() {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to update AI settings: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to update AI settings: ${errorText || response.statusText}`);
       }
       
-      // Parse the response
-      const result = await response.json();
-      console.log("AI settings updated successfully:", result);
+      // Safely parse the response
+      let result;
+      try {
+        const responseText = await response.text();
+        console.log("Raw response:", responseText);
+        
+        // Only try to parse JSON if it looks like JSON
+        if (responseText.trim().startsWith('{')) {
+          result = JSON.parse(responseText);
+          console.log("AI settings updated successfully:", result);
+        } else {
+          console.log("Response not in JSON format:", responseText);
+          // Simply indicate success without trying to parse
+          result = { success: true };
+        }
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // Continue with a fallback result
+        result = { success: true };
+      }
       
       toast({
         title: "AI settings updated",

@@ -114,6 +114,39 @@ export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
 export type InsertAnalytics = typeof analytics.$inferInsert;
 export type Analytics = typeof analytics.$inferSelect;
 
+// User settings interfaces
+export interface AISettings {
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  responseTimeout: number;
+  enableKnowledgeBase: boolean;
+  fallbackToHuman: boolean;
+}
+
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  desktopNotifications: boolean;
+  newMessageAlerts: boolean;
+  assignmentNotifications: boolean;
+  summaryReports: boolean;
+}
+
+export interface UserSettings {
+  aiSettings?: AISettings;
+  notificationSettings?: NotificationSettings;
+  profileSettings?: {
+    name?: string;
+    role?: string;
+    company?: string;
+  };
+}
+
+// Add type definition for userSettings
+export type UserWithSettings = User & {
+  userSettings: UserSettings;
+};
+
 // Create insert schemas
 export const insertPlatformSchema = createInsertSchema(platforms).omit({ id: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true });
