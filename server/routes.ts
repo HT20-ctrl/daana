@@ -694,5 +694,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification routes
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = getUserNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+  
+  // Mark notification as read
+  app.post("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notificationId = req.params.id;
+      
+      const success = markNotificationRead(userId, notificationId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+  
+  // Test notification endpoint (for development/testing)
+  app.post("/api/notifications/test", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type, title, message, link } = req.body;
+      
+      if (!type || !title || !message) {
+        return res.status(400).json({ 
+          message: "Missing required fields: type, title, message" 
+        });
+      }
+      
+      const data: NotificationData = {
+        title,
+        message,
+        link
+      };
+      
+      const result = await sendNotification(
+        userId, 
+        type as NotificationType, 
+        data
+      );
+      
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+      res.status(500).json({ message: "Failed to send notification" });
+    }
+  });
+
   return httpServer;
 }

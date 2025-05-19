@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { User, Conversation, Message, KnowledgeBase } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, HelpCircle, Search, X } from "lucide-react";
+import { HelpCircle, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { NotificationBadge } from "@/components/ui/notification-badge";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
@@ -31,7 +32,6 @@ interface HeaderProps {
 
 export default function Header({ user }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasNotifications, setHasNotifications] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -234,20 +234,7 @@ export default function Header({ user }: HeaderProps) {
         
         {/* Action buttons */}
         <div className="flex items-center ml-4 space-x-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="relative text-gray-600 hover:text-gray-900 focus:outline-none"
-            onClick={() => setHasNotifications(!hasNotifications)}
-          >
-            <Bell className="h-5 w-5" />
-            {hasNotifications && (
-              <Badge 
-                className="absolute top-0 right-0 h-2 w-2 p-0 rounded-full bg-red-500 border-0"
-                aria-label="New notifications"
-              />
-            )}
-          </Button>
+          <NotificationBadge />
           
           <Button 
             variant="ghost" 
