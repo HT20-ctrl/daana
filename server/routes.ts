@@ -537,6 +537,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to increment manual responses" });
     }
   });
+  
+  // User settings endpoints
+  
+  // Update user profile
+  app.post("/api/user/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, email } = req.body;
+      
+      console.log("Updating user profile:", { userId, firstName, lastName, email });
+      
+      // Update user profile in storage
+      const updatedUser = await storage.upsertUser({
+        id: userId,
+        firstName,
+        lastName,
+        email,
+        // Keep existing profile image URL if present
+        profileImageUrl: req.user.claims.profile_image_url || null
+      });
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update user profile" });
+    }
+  });
+  
+  // Update AI settings - we'll store these in a new userSettings field in the User model
+  app.post("/api/user/ai-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const aiSettings = req.body;
+      
+      console.log("Updating AI settings for user:", userId, aiSettings);
+      
+      // Get current user
+      let user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update user with new AI settings
+      // In a real implementation, we would have a separate table for user settings
+      // For this demo, we'll store settings in a userSettings field
+      const updatedUser = await storage.upsertUser({
+        ...user,
+        userSettings: {
+          ...user.userSettings,
+          aiSettings
+        }
+      });
+      
+      res.json({ success: true, settings: updatedUser.userSettings?.aiSettings });
+    } catch (error) {
+      console.error("Error updating AI settings:", error);
+      res.status(500).json({ message: "Failed to update AI settings" });
+    }
+  });
+  
+  // Update notification settings
+  app.post("/api/user/notification-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notificationSettings = req.body;
+      
+      console.log("Updating notification settings for user:", userId, notificationSettings);
+      
+      // Get current user
+      let user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update user with new notification settings
+      const updatedUser = await storage.upsertUser({
+        ...user,
+        userSettings: {
+          ...user.userSettings,
+          notificationSettings
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        settings: updatedUser.userSettings?.notificationSettings 
+      });
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ message: "Failed to update notification settings" });
+    }
+  });
 
   return httpServer;
 }

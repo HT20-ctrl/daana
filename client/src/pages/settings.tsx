@@ -144,26 +144,35 @@ export default function Settings() {
         description: "Please wait while we update your information"
       });
       
-      // Simulate API call with a short delay
-      setTimeout(() => {
-        // In a production environment, this would call an API endpoint
-        console.log("Profile update being saved:", profileForm);
-        
-        // Update the stored user information with the new profile data
-        if (user) {
-          // In a production environment, this would be done automatically by the API
-          console.log("Updated user profile: ", {...user, ...profileForm});
-        }
-        
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully."
-        });
-      }, 800);
+      // Call the API endpoint to update profile
+      const response = await fetch("/api/user/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(profileForm)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update profile: ${response.statusText}`);
+      }
+      
+      // Parse the response
+      const updatedUser = await response.json();
+      console.log("Profile updated successfully:", updatedUser);
+      
+      // Force refresh of user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
     } catch (error) {
+      console.error("Error updating profile:", error);
       toast({
         title: "Update failed",
-        description: "Failed to update profile. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
         variant: "destructive"
       });
     }
@@ -180,20 +189,32 @@ export default function Settings() {
         description: "Updating your AI configuration"
       });
       
-      // Simulate API call with a short delay
-      setTimeout(() => {
-        // In a production environment, this would call an API endpoint
-        console.log("AI settings being saved:", aiSettings);
-        
-        toast({
-          title: "AI settings updated",
-          description: `Your AI configuration has been updated successfully. Using ${aiSettings.model} with temperature ${aiSettings.temperature}.`
-        });
-      }, 800);
+      // Call the API endpoint to update AI settings
+      const response = await fetch("/api/user/ai-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(aiSettings)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update AI settings: ${response.statusText}`);
+      }
+      
+      // Parse the response
+      const result = await response.json();
+      console.log("AI settings updated successfully:", result);
+      
+      toast({
+        title: "AI settings updated",
+        description: `Your AI configuration has been updated successfully. Using ${aiSettings.model} with temperature ${aiSettings.temperature}.`
+      });
     } catch (error) {
+      console.error("Error updating AI settings:", error);
       toast({
         title: "Update failed",
-        description: "Failed to update AI settings. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update AI settings. Please try again.",
         variant: "destructive"
       });
     }
@@ -1155,11 +1176,43 @@ export default function Settings() {
                 
                 <div className="pt-4">
                   <Button
-                    onClick={() => {
-                      toast({
-                        title: "Notification settings saved",
-                        description: "Your notification preferences have been updated successfully",
-                      });
+                    onClick={async () => {
+                      try {
+                        // Show a loading toast
+                        toast({
+                          title: "Saving notification settings...",
+                          description: "Please wait while we update your preferences"
+                        });
+                        
+                        // Call the API endpoint to update notification settings
+                        const response = await fetch("/api/user/notification-settings", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json"
+                          },
+                          body: JSON.stringify(notificationSettings)
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error(`Failed to update notification settings: ${response.statusText}`);
+                        }
+                        
+                        // Parse the response
+                        const result = await response.json();
+                        console.log("Notification settings updated successfully:", result);
+                        
+                        toast({
+                          title: "Notification settings saved",
+                          description: "Your notification preferences have been updated successfully",
+                        });
+                      } catch (error) {
+                        console.error("Error updating notification settings:", error);
+                        toast({
+                          title: "Update failed",
+                          description: error instanceof Error ? error.message : "Failed to update notification settings. Please try again.",
+                          variant: "destructive"
+                        });
+                      }
                     }}
                   >
                     Save Notification Settings
