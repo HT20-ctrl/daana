@@ -72,7 +72,7 @@ export default function RecentConversations({ conversations = [], isLoading }: R
     <Card className="shadow rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: "600ms" }}>
       <CardHeader className="px-4 py-5 sm:px-6 flex justify-between items-center">
         <CardTitle className="text-lg font-medium leading-6 text-gray-900">Recent Conversations</CardTitle>
-        <a href="/conversations" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+        <a href="/app/conversations" className="text-sm font-medium text-primary-600 hover:text-primary-500">
           View all
         </a>
       </CardHeader>
@@ -123,7 +123,7 @@ export default function RecentConversations({ conversations = [], isLoading }: R
                     <><Bot className="h-4 w-4 mr-1" /> AI Response</>
                   )}
                 </Button>
-                <a href={`/conversations/${conversation.id}`}>
+                <a href={`/app/conversations/${conversation.id}`}>
                   <Button size="sm" variant="outline">
                     Reply
                   </Button>
