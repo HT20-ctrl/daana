@@ -60,10 +60,7 @@ export default function KnowledgeBase({ knowledgeBase = [], isLoading }: Knowled
 
       // Using the correct API endpoint for knowledge base upload
       // Make sure the FormData contains the file with the correct field name
-      console.log("Checking FormData contents:");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
+      console.log("FormData file added:", selectedFile.name);
       
       console.log("Sending upload request to /api/knowledge-base");
       const response = await fetch("/api/knowledge-base", {

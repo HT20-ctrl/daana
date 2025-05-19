@@ -411,7 +411,18 @@ export default function Settings() {
                         <p className="text-xs text-gray-500">Password and authentication</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">Manage</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        toast({
+                          title: "Security settings",
+                          description: "Account security settings will be available in a future update.",
+                        });
+                      }}
+                    >
+                      Manage
+                    </Button>
                   </div>
                   
                   <div className="flex justify-between items-center">
@@ -422,7 +433,18 @@ export default function Settings() {
                         <p className="text-xs text-gray-500">Generate API keys</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">Configure</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        toast({
+                          title: "API Access",
+                          description: "API configuration will be available in a future update.",
+                        });
+                      }}
+                    >
+                      Configure
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1219,13 +1241,38 @@ export default function Settings() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline">Cancel Subscription</Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  toast({
+                    title: "Subscription Management",
+                    description: "Subscription management will be available in a future update.",
+                  });
+                }}
+              >
+                Cancel Subscription
+              </Button>
               <div className="flex space-x-2">
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    toast({
+                      title: "Plan Management",
+                      description: "Plan management will be available in a future update.",
+                    });
+                  }}
+                >
                   <Package className="h-4 w-4 mr-2" />
                   Change Plan
                 </Button>
-                <Button>
+                <Button
+                  onClick={() => {
+                    toast({
+                      title: "Billing Information",
+                      description: "Billing management will be available in a future update.",
+                    });
+                  }}
+                >
                   <CreditCard className="h-4 w-4 mr-2" />
                   Update Billing
                 </Button>
