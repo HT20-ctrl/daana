@@ -134,13 +134,13 @@ const PlatformConnectButton = React.forwardRef<
     setIsLoading(true);
     
     try {
-      // If this is an OAuth/redirect-based auth platform, redirect to the connect endpoint
+      // Standard OAuth redirect flow for platforms that use it
       if (platformConfig.redirectAuth) {
         // Set a cookie or localStorage value to remember where to return after auth
         localStorage.setItem('returnToSettings', 'true');
         window.location.href = platformConfig.connectEndpoint;
         return; // This will redirect the page
-      } 
+      }
       
       // Direct API connection (simpler platforms)
       const response = await fetch(platformConfig.connectEndpoint, {

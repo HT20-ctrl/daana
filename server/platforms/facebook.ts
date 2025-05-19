@@ -179,6 +179,8 @@ export async function connectFacebook(req: Request, res: Response) {
       });
     }
     
+    console.log("Starting Facebook OAuth authorization flow");
+    
     // Regular OAuth flow with real credentials
     // Generate state parameter to prevent CSRF
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -240,7 +242,17 @@ export async function facebookCallback(req: Request, res: Response) {
     // Handle user cancellation or errors
     if (error) {
       console.error(`Facebook auth error: ${error}`);
-      return res.redirect('/app/settings?fb_error=true&error_reason=' + encodeURIComponent(String(error)));
+      
+      // Handle specific Facebook error codes with helpful messages
+      let errorMessage = "Unknown error occurred";
+      
+      if (error === "access_denied") {
+        errorMessage = "You declined to authorize the application.";
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      
+      return res.redirect('/app/settings?platform=facebook&status=error&error_reason=' + encodeURIComponent(errorMessage));
     }
     
     // Get Facebook OAuth data from session or cookie
@@ -386,9 +398,9 @@ export async function facebookCallback(req: Request, res: Response) {
       });
     }
     
-    // Redirect back to the app with success parameter
+    // Redirect back to the app with success parameter and connection details
     console.log("Facebook connection successful, redirecting to settings");
-    res.redirect('/app/settings?platform=facebook&status=connected');
+    res.redirect(`/app/settings?platform=facebook&status=connected&user=${encodeURIComponent(userData.name)}&pages=${pages.length}`);
   } catch (error) {
     console.error("Error handling Facebook OAuth callback:", error);
     res.redirect('/app/settings?fb_error=true&error_reason=server_error');
