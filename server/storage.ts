@@ -116,8 +116,8 @@ export class MemStorage implements IStorage {
       name: "facebook",
       displayName: "Facebook",
       userId: "1",
-      isConnected: true,
-      accessToken: "sample-token-facebook",
+      isConnected: false, // Set to false to allow connecting via OAuth
+      accessToken: null,
       refreshToken: null,
       tokenExpiry: null,
       createdAt: new Date(),
