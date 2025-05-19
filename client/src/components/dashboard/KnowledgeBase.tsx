@@ -54,20 +54,33 @@ export default function KnowledgeBase({ knowledgeBase = [], isLoading }: Knowled
     setIsUploading(true);
 
     try {
+      console.log("Starting upload process for file:", selectedFile.name);
       const formData = new FormData();
       formData.append("file", selectedFile);
 
       // Using the correct API endpoint for knowledge base upload
+      console.log("Sending upload request to /api/knowledge-base");
       const response = await fetch("/api/knowledge-base", {
         method: "POST",
         body: formData,
         credentials: "include"
       });
 
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+      console.log("Response status:", response.status);
+      
+      let responseText = "";
+      try {
+        responseText = await response.text();
+        console.log("Response body:", responseText);
+      } catch (e) {
+        console.log("Couldn't read response text");
       }
 
+      if (!response.ok) {
+        throw new Error(`Upload failed (${response.status}): ${response.statusText} - ${responseText}`);
+      }
+
+      console.log("Upload successful, refreshing knowledge base data");
       queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
       
       toast({
