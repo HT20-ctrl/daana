@@ -189,9 +189,9 @@ export default function KnowledgeBase({ knowledgeBase = [], isLoading }: Knowled
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">{knowledgeBase.length} documents uploaded</p>
-            <Link href="/knowledge-base" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+            <a href="/knowledge-base" className="text-sm font-medium text-primary-600 hover:text-primary-500">
               Manage all
-            </Link>
+            </a>
           </div>
         </div>
       </CardContent>
