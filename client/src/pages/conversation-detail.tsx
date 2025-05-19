@@ -166,11 +166,11 @@ export default function ConversationDetail() {
   return (
     <>
       <div className="mb-4">
-        <Button variant="ghost" asChild className="gap-1 pl-1">
-          <Link href="/app/conversations">
-            <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" className="gap-1 pl-1">
+          <a href="/conversations" className="flex items-center">
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back to conversations
-          </Link>
+          </a>
         </Button>
       </div>
       
