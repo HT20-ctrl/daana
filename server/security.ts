@@ -69,15 +69,7 @@ export function setupSecurity(app: Express) {
 
   // 5. Set up CSRF protection with tiny-csrf
   const csrfProtection = tinyCsrf(
-    process.env.SESSION_SECRET || 'csrf-secret-key', 
-    ['POST', 'PUT', 'DELETE', 'PATCH'], // CSRF check on state-changing methods only
-    [],  // No specific headers required
-    '_csrf', // Cookie name
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    }
+    process.env.SESSION_SECRET || 'csrf-secret-key'
   );
 
   // Apply CSRF protection to non-OAuth routes that change state
@@ -137,13 +129,24 @@ export function setupSecurity(app: Express) {
  */
 export function enhancedSecurityCheck(req: Request, res: Response, next: NextFunction) {
   // Check if the session is recent (within the last hour)
-  const sessionStart = req.session?.created || 0;
+  // We'll use the user session's lastAccess time if available
+  // or fallback to checking if there is a valid user session
+  const user = req.user as any;
   const hourInMs = 60 * 60 * 1000;
   
-  if (Date.now() - sessionStart > hourInMs) {
-    // For operations requiring re-authentication
+  if (!user || !user.expires_at) {
+    // No valid user session
     return res.status(401).json({
       message: 'Session expired for this operation. Please re-authenticate.',
+      requiresReauth: true
+    });
+  }
+  
+  // For sensitive operations requiring fresh authentication
+  const now = Math.floor(Date.now() / 1000);
+  if (now > user.expires_at - hourInMs/1000) {
+    return res.status(401).json({
+      message: 'Session refresh required for this sensitive operation. Please re-authenticate.',
       requiresReauth: true
     });
   }

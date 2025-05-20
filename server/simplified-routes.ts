@@ -73,8 +73,10 @@ import {
   getSalesforceStatus
 } from "./platforms/salesforce";
 
+import { checkAuth, enforceDataSegregation, enhancedSecurityCheck } from "./auth";
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  console.log("Setting up simplified routes - no auth required");
+  console.log("Setting up simplified routes with enhanced security");
 
   // Create HTTP server
   const httpServer = createServer(app);
@@ -101,9 +103,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platforms API
-  app.get("/api/platforms", async (req, res) => {
+  app.get("/api/platforms", checkAuth, async (req, res) => {
     try {
-      const userId = "1"; // Demo user ID
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub || "1"; // Use authenticated user ID or fallback
       let platforms = await storage.getPlatformsByUserId(userId);
       
       // If no platforms are found, create default platform entries for demonstration purposes

@@ -1,9 +1,15 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./simplified-routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupSecurityMeasures } from "./auth";
 
 const app = express();
-app.use(express.json());
+
+// Set up enhanced security features
+setupSecurityMeasures(app);
+
+// Basic middleware setup
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
