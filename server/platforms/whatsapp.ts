@@ -17,53 +17,49 @@ export async function connectWhatsApp(req: Request, res: Response) {
   try {
     console.log("WhatsApp connect endpoint called");
     
+    // Get user ID from auth or use demo user
+    const userId = (req.user as any)?.claims?.sub || "1"; // Default demo user ID
+    console.log(`Connecting WhatsApp for user ID: ${userId}`);
+    
     // Before connecting, we need to disconnect any existing WhatsApp connections
     console.log("Setting all existing WhatsApp platforms to disconnected");
-    const userId = '1'; // Default demo user ID
     const userPlatforms = await storage.getPlatformsByUserId(userId);
     
     // Find any existing connected WhatsApp platforms and disconnect them
     for (const platform of userPlatforms) {
       if (platform.name === "whatsapp" && platform.isConnected) {
         console.log(`Updating WhatsApp platform ID: ${platform.id} to disconnected`);
-        await storage.createPlatform({
-          ...platform,
+        await storage.updatePlatform(platform.id, {
           isConnected: false,
           accessToken: null,
-          refreshToken: null
+          refreshToken: null,
+          tokenExpiry: null
         });
       }
     }
     
-    // For development without credentials, use a mock connection flow
+    // Check if WhatsApp API is properly configured
     if (!isWhatsAppConfigured()) {
-      console.log("Using demo WhatsApp connection");
-      
-      // Create mock WhatsApp connection
-      console.log("Creating new WhatsApp connection for business account");
-      await storage.createPlatform({
-        userId,
-        name: "whatsapp",
-        displayName: "WhatsApp Business",
-        accessToken: "mock_whatsapp_token",
-        refreshToken: null,
-        tokenExpiry: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        isConnected: true
+      console.warn("WhatsApp API credentials not configured! Please set WHATSAPP_BUSINESS_ID and WHATSAPP_API_TOKEN");
+      return res.status(400).json({
+        success: false,
+        message: "WhatsApp API credentials not configured"
       });
-      
-      // Redirect back to the settings page
-      return res.redirect('/settings?wa_connected=true&mock=true');
     }
 
-    // In a production implementation, we would use WhatsApp's cloud API registration flow
-    // The actual mechanism for WhatsApp Business API requires phone number verification
-    // and business account setup first, which is different from standard OAuth
+    // WhatsApp Business API uses a different flow than standard OAuth
+    console.log("Starting WhatsApp Business API connection flow");
     
     // Generate random state for CSRF protection
     const state = crypto.randomBytes(16).toString("hex");
+    
+    // Store state and user ID in session for validation during callback
     if (req.session) {
-      // @ts-ignore - Add whatsappState to session
-      req.session.whatsappState = state;
+      // @ts-ignore - Add WhatsApp OAuth data to session
+      req.session.whatsapp_oauth = {
+        state: state,
+        userId: userId
+      };
       
       // Check if session has save method before using it
       if (typeof req.session.save === 'function') {
@@ -71,56 +67,65 @@ export async function connectWhatsApp(req: Request, res: Response) {
       }
     } else {
       console.log("Session not available, using cookie-based state");
-      res.cookie('whatsappState', state, { 
+      res.cookie('whatsappOAuth', JSON.stringify({
+        state: state,
+        userId: userId
+      }), { 
         httpOnly: true, 
         secure: true,
         maxAge: 10 * 60 * 1000 // 10 minutes
       });
     }
     
-    // In a real implementation, we would redirect to WhatsApp's business registration
-    // or to Facebook's business manager which handles WhatsApp Business accounts
+    // In production, we would use the WhatsApp Business API OAuth flow
+    // This requires a properly configured business account with Facebook/Meta
     
-    // Build a simulated authorization URL for consistency with other platforms
-    // In production, this would point to Meta's WhatsApp Business Platform
-    const authUrl = `https://business.facebook.com/wa/manage/?business_id=${
-      process.env.WHATSAPP_BUSINESS_ID || "placeholder_business_id"
-    }&state=${state}`;
+    // Build the WhatsApp Business authorization URL
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/platforms/whatsapp/callback`;
+    const authUrl = `https://business.facebook.com/wa/manage/apps/callback/?business_id=${
+      process.env.WHATSAPP_BUSINESS_ID
+    }&app_id=${
+      process.env.FACEBOOK_APP_ID
+    }&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-    console.log(`Redirecting to WhatsApp business registration: ${authUrl}`);
+    console.log(`Redirecting to WhatsApp business authorization: ${authUrl}`);
     
     // Redirect the user to the WhatsApp business authorization page
     res.redirect(authUrl);
   } catch (error) {
     console.error("Error connecting to WhatsApp:", error);
-    res.status(500).json({ message: "Failed to connect to WhatsApp" });
+    let errorMessage = 'server_error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.redirect(`/app/settings?platform=whatsapp&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
   }
 }
 
-// Handle WhatsApp OAuth callback (simulated since WhatsApp uses a different connection flow)
+// Handle WhatsApp Business API OAuth callback
 export async function whatsappCallback(req: Request, res: Response) {
   try {
-    console.log("WhatsApp callback received");
-    const { state, error } = req.query;
+    console.log("WhatsApp callback received", req.query);
+    const { state, error, code } = req.query;
     
     // Handle user cancellation or errors
     if (error) {
       console.error(`WhatsApp auth error: ${error}`);
-      return res.redirect('/settings?wa_error=true&error_reason=' + encodeURIComponent(String(error)));
+      return res.redirect(`/app/settings?platform=whatsapp&status=error&error_reason=${encodeURIComponent(String(error))}`);
     }
     
-    // Get saved state from session or cookie
-    let savedState = null;
+    // Get saved OAuth data from session or cookie
+    let oauthData = null;
     
-    // Try to get state from session
+    // Try to get OAuth data from session first
     if (req.session) {
-      // @ts-ignore - Access whatsappState from session
-      savedState = req.session.whatsappState;
+      // @ts-ignore - Access whatsapp_oauth from session
+      oauthData = req.session.whatsapp_oauth || null;
       
       // Clear state from session if it exists
-      if (savedState) {
-        // @ts-ignore - Delete whatsappState from session
-        delete req.session.whatsappState;
+      if (oauthData) {
+        // @ts-ignore - Delete whatsapp_oauth from session
+        delete req.session.whatsapp_oauth;
         
         // Save session if possible
         if (typeof req.session.save === 'function') {
@@ -129,53 +134,75 @@ export async function whatsappCallback(req: Request, res: Response) {
       }
     }
     
-    // If no state in session, try from cookie
-    if (!savedState && req.cookies && req.cookies.whatsappState) {
-      savedState = req.cookies.whatsappState;
-      res.clearCookie('whatsappState');
+    // If no OAuth data in session, try from cookie
+    if (!oauthData && req.cookies && req.cookies.whatsappOAuth) {
+      try {
+        oauthData = JSON.parse(req.cookies.whatsappOAuth);
+        res.clearCookie('whatsappOAuth');
+      } catch (e) {
+        console.error("Error parsing WhatsApp OAuth cookie:", e);
+      }
     }
     
     // Validate state parameter to prevent CSRF attacks
-    if (!savedState || state !== savedState) {
-      console.error("Invalid state parameter", { state, savedState });
-      return res.redirect('/settings?wa_error=true&error_reason=invalid_state');
+    if (!oauthData || !oauthData.state || state !== oauthData.state) {
+      console.error("Invalid state parameter", { state, savedState: oauthData?.state });
+      return res.redirect('/app/settings?platform=whatsapp&status=error&error_reason=invalid_state');
     }
     
-    // Get a user ID from session or use demo ID
-    let userId = '1'; // Default demo user ID
+    // Get user ID from OAuth data or fallback to demo user
+    const userId = oauthData.userId || (req.user as any)?.claims?.sub || '1';
+    console.log(`Processing WhatsApp connection for user: ${userId}`);
     
-    // If in a real auth environment, get from the request user
-    if (req.user && typeof req.user === 'object' && 'sub' in req.user) {
-      userId = String(req.user.sub);
-    } else if (req.user && typeof req.user === 'object' && 'id' in req.user) {
-      userId = String(req.user.id);
-    } else if (req.user && typeof req.user === 'object' && 'claims' in req.user) {
-      // @ts-ignore - Handle Replit Auth format
-      userId = req.user.claims.sub || userId;
+    if (!process.env.WHATSAPP_API_TOKEN) {
+      console.warn("WhatsApp API token not configured in environment variables");
+      return res.redirect('/app/settings?platform=whatsapp&status=error&error_reason=missing_api_token');
     }
     
-    // Use provided API token if available
-    const token = process.env.WHATSAPP_API_TOKEN || "wa_demo_token_" + Math.random().toString(36).substring(2);
-    console.log("Creating WhatsApp platform record in database");
+    // In a real implementation, we would exchange the code for tokens
+    // For WhatsApp Business Cloud API, this involves a different flow
+    const token = process.env.WHATSAPP_API_TOKEN;
+    const expiryDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
     
-    // Create a platform record for WhatsApp
-    const platform = await storage.createPlatform({
-      userId,
-      name: "whatsapp",
-      displayName: "WhatsApp Business",
-      accessToken: token,
-      refreshToken: null,
-      tokenExpiry: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
-      isConnected: true
-    });
+    // Check for existing WhatsApp platform for this user
+    const userPlatforms = await storage.getPlatformsByUserId(userId);
+    const existingWhatsApp = userPlatforms.find(p => p.name === "whatsapp");
     
-    console.log(`WhatsApp platform created with ID: ${platform.id}`);
+    let platform;
+    if (existingWhatsApp) {
+      // Update existing platform
+      console.log(`Updating existing WhatsApp platform ID: ${existingWhatsApp.id}`);
+      platform = await storage.updatePlatform(existingWhatsApp.id, {
+        displayName: "WhatsApp Business",
+        accessToken: token,
+        tokenExpiry: expiryDate,
+        isConnected: true
+      });
+    } else {
+      // Create a new platform record for WhatsApp
+      console.log("Creating new WhatsApp platform record in database");
+      platform = await storage.createPlatform({
+        userId,
+        name: "whatsapp",
+        displayName: "WhatsApp Business",
+        accessToken: token,
+        refreshToken: null,
+        tokenExpiry: expiryDate,
+        isConnected: true
+      });
+    }
+    
+    console.log(`WhatsApp platform created/updated with ID: ${platform.id}`);
     
     // Redirect back to the settings page with success parameter
-    res.redirect('/settings?wa_connected=true');
+    res.redirect('/app/settings?platform=whatsapp&status=connected');
   } catch (error) {
     console.error("Error handling WhatsApp callback:", error);
-    res.redirect('/settings?wa_error=true&error_reason=server_error');
+    let errorMessage = 'server_error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.redirect(`/app/settings?platform=whatsapp&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
   }
 }
 
