@@ -44,7 +44,7 @@ export default function ScheduleDemo({
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {step === 1 ? 'Select Date & Time' : step === 2 ? 'Your Information' : 'Booking Confirmed'}
             </h2>
             <button 
@@ -176,7 +176,7 @@ export default function ScheduleDemo({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Demo Scheduled!</h3>
+              <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">Demo Scheduled!</h3>
               <p className="text-gray-600 mb-6">
                 {date instanceof Date && (
                   <>
