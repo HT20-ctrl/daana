@@ -9,12 +9,31 @@ import {
 } from '@tanstack/react-query';
 import { measureAsyncPerformance } from '@/lib/performance';
 
+// Define the full set of options including all React Query v5 callbacks
+export interface EnhancedQueryOptions<
+  TData = unknown,
+  TError = Error,
+  TQueryData = TData
+> extends Omit<UseQueryOptions<TData, TError, TData, QueryKey>, 'queryKey'> {
+  staleTime?: number;
+  gcTime?: number;
+  enabled?: boolean;
+  refetchOnWindowFocus?: boolean;
+  refetchOnMount?: boolean;
+  refetchOnReconnect?: boolean;
+  retry?: number | boolean;
+  retryDelay?: number | ((attempt: number) => number);
+  onSuccess?: (data: TData) => void;
+  onError?: (error: TError) => void;
+  onSettled?: (data: TData | undefined, error: TError | null) => void;
+}
+
 /**
  * Enhanced query hook with performance monitoring and improved caching
  */
-export function useCachedQuery<TData = unknown>(
+export function useCachedQuery<TData = unknown, TError = Error>(
   queryKey: QueryKey,
-  options: Omit<UseQueryOptions<TData, Error, TData, QueryKey>, 'queryKey'> = {}
+  options: EnhancedQueryOptions<TData, TError> = {}
 ) {
   const queryClient = useQueryClient();
   const queryKeyString = Array.isArray(queryKey) ? queryKey.join(':') : String(queryKey);
@@ -50,7 +69,7 @@ export function useCachedQuery<TData = unknown>(
     });
   };
   
-  return useQuery<TData, Error, TData, QueryKey>({
+  return useQuery<TData, TError, TData, QueryKey>({
     queryKey,
     queryFn: options.queryFn || defaultQueryFn,
     refetchOnWindowFocus: true,

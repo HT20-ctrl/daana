@@ -147,8 +147,7 @@ export function useOptimizedMessages(conversationId: number) {
 export function useOptimizedKnowledgeBase() {
   const { user } = useAuth();
   
-  return useCachedQuery<any[]>({
-    queryKey: ['/api/knowledge-base'],
+  return useCachedQuery<any[]>(['/api/knowledge-base'], {
     staleTime: LONG_CACHE_TIME, // Knowledge base rarely changes
     gcTime: LONG_CACHE_TIME,
     enabled: !!user,
@@ -165,8 +164,7 @@ export function useOptimizedKnowledgeBase() {
 export function useOptimizedAnalytics() {
   const { user } = useAuth();
   
-  return useCachedQuery<any>({
-    queryKey: ['/api/analytics'],
+  return useCachedQuery<any>(['/api/analytics'], {
     staleTime: MEDIUM_CACHE_TIME,
     gcTime: LONG_CACHE_TIME,
     enabled: !!user
@@ -183,13 +181,27 @@ export function prefetchCommonData() {
   // Prefetch platforms (important for showing connection status)
   queryClient.prefetchQuery({
     queryKey: ['/api/platforms'],
-    staleTime: MEDIUM_CACHE_TIME
+    staleTime: MEDIUM_CACHE_TIME,
+    queryFn: async () => {
+      const response = await fetch('/api/platforms');
+      if (!response.ok) {
+        throw new Error('Failed to prefetch platforms');
+      }
+      return await response.json();
+    }
   });
   
   // Prefetch conversations (common navigation target)
   queryClient.prefetchQuery({
     queryKey: ['/api/conversations'],
-    staleTime: SHORT_CACHE_TIME
+    staleTime: SHORT_CACHE_TIME,
+    queryFn: async () => {
+      const response = await fetch('/api/conversations');
+      if (!response.ok) {
+        throw new Error('Failed to prefetch conversations');
+      }
+      return await response.json();
+    }
   });
 }
 
