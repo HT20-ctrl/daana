@@ -15,6 +15,8 @@ export type UseCachedQueryOptions<T> = Omit<
   'queryKey'
 > & {
   queryKey: QueryKey;
+  onSuccess?: (data: T) => void; 
+  onError?: (error: Error) => void;
 };
 
 /**
@@ -31,6 +33,8 @@ export type UseCachedQueryOptions<T> = Omit<
  */
 export function useCachedQuery<T>({
   queryKey,
+  onSuccess,
+  onError,
   ...options
 }: UseCachedQueryOptions<T>) {
   const queryClient = useQueryClient();
@@ -41,10 +45,7 @@ export function useCachedQuery<T>({
     console.error(`Query error (${queryKeyString}):`, error);
   };
   
-  // Create a merged options object without the onError property
-  const { onError, ...restOptions } = options;
-  
-  // Return the enhanced query
+  // Return the enhanced query with all options properly set
   return useQuery<T, Error, T, QueryKey>({
     queryKey,
     
@@ -91,13 +92,12 @@ export function useCachedQuery<T>({
     retry: 1,                         // Only retry once to avoid overwhelming server
     retryDelay: 1000,                 // Wait 1 second between retries
     
+    // Handle success and error callbacks
+    onSuccess: onSuccess,
+    onError: onError || defaultOnError,
+    
     // Pass through other options
-    ...restOptions,
-  }, {
-    // Provide the error handler through the context API rather than options
-    context: {
-      onError: onError || defaultOnError,
-    }
+    ...options,
   });
 }
 

@@ -21,7 +21,7 @@ export function useOptimizedPlatforms() {
   return useCachedQuery({
     queryKey: ['/api/platforms'],
     staleTime: MEDIUM_CACHE_TIME,
-    cacheTime: MEDIUM_CACHE_TIME,
+    gcTime: MEDIUM_CACHE_TIME,
     onSuccess: (data) => {
       console.log('[Optimized] Platforms loaded:', data.length);
     }
@@ -70,7 +70,7 @@ export function useOptimizedConversations() {
   return useCachedQuery({
     queryKey: ['/api/conversations'],
     staleTime: SHORT_CACHE_TIME, // Conversations change frequently
-    cacheTime: MEDIUM_CACHE_TIME, // But we can keep cache a bit longer
+    gcTime: MEDIUM_CACHE_TIME, // But we can keep cache a bit longer
     enabled: !!user,
     onSuccess: (data) => {
       // If there are active conversations, decrease stale time
@@ -93,7 +93,7 @@ export function useOptimizedConversation(conversationId: number) {
   return useCachedQuery({
     queryKey: ['/api/conversations', conversationId],
     staleTime: SHORT_CACHE_TIME, // Single conversation view should be fresh
-    cacheTime: MEDIUM_CACHE_TIME, 
+    gcTime: MEDIUM_CACHE_TIME, 
     enabled: !!user && !!conversationId,
     onSuccess: (data) => {
       // If the conversation is active, reduce the stale time even more
@@ -116,7 +116,7 @@ export function useOptimizedMessages(conversationId: number) {
   return useCachedQuery({
     queryKey: ['/api/conversations', conversationId, 'messages'],
     staleTime: SHORT_CACHE_TIME / 2, // Messages change very frequently
-    cacheTime: MEDIUM_CACHE_TIME,
+    gcTime: MEDIUM_CACHE_TIME,
     enabled: !!user && !!conversationId,
     onSuccess: (data) => {
       // Update the conversation preview if we have messages
@@ -151,7 +151,7 @@ export function useOptimizedKnowledgeBase() {
   return useCachedQuery({
     queryKey: ['/api/knowledge-base'],
     staleTime: LONG_CACHE_TIME, // Knowledge base rarely changes
-    cacheTime: LONG_CACHE_TIME,
+    gcTime: LONG_CACHE_TIME,
     enabled: !!user,
     onSuccess: (data) => {
       console.log('[Optimized] Knowledge base loaded:', data.length);
@@ -169,7 +169,7 @@ export function useOptimizedAnalytics() {
   return useCachedQuery({
     queryKey: ['/api/analytics'],
     staleTime: MEDIUM_CACHE_TIME,
-    cacheTime: LONG_CACHE_TIME,
+    gcTime: LONG_CACHE_TIME,
     enabled: !!user
   });
 }
