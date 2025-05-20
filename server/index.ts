@@ -1,16 +1,35 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./simplified-routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { setupSecurityMeasures } from "./auth";
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 
 const app = express();
-
-// Enhanced security features temporarily disabled for dashboard functionality
-// setupSecurityMeasures(app);
 
 // Basic middleware setup
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
+
+// Set up essential security features
+// 1. Configure CORS
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? [/\.replit\.app$/, /\.repl\.co$/] 
+    : true,
+  credentials: true,
+}));
+
+// 2. Add cookie parser for sessions
+app.use(cookieParser(process.env.SESSION_SECRET));
+
+// 3. Configure basic Helmet (with development-friendly settings)
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled for development
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();
