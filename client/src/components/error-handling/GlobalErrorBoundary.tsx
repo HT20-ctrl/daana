@@ -8,11 +8,11 @@ import { useLocation } from 'wouter';
  * Provides navigation options to recover from errors
  */
 const GlobalErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const handleReset = () => {
     // Navigate to homepage when resetting from a global error
-    navigate('/');
+    setLocation('/');
   };
 
   // Custom fallback UI for global errors
@@ -37,7 +37,7 @@ const GlobalErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children
           
           <Button 
             className="w-full" 
-            onClick={() => navigate('/')}
+            onClick={() => setLocation('/')}
             variant="outline"
           >
             Go to homepage

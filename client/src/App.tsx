@@ -137,13 +137,18 @@ function AuthRouter() {
   );
 }
 
+// Import the error boundary component
+import GlobalErrorBoundary from "./components/error-handling/GlobalErrorBoundary";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
-          <AuthRouter />
+          <GlobalErrorBoundary>
+            <Toaster />
+            <AuthRouter />
+          </GlobalErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -35,7 +35,8 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error to an error reporting service
-    logErrorToService(error, errorInfo.componentStack);
+    const componentStack = errorInfo.componentStack || '';
+    logErrorToService(error, componentStack);
   }
 
   handleReset = (): void => {
