@@ -80,12 +80,8 @@ export const getQueryFn: <T>(options: {
       // Check if the URL is a page route instead of an API route
       // This helps prevent the "unexpected token doctype" error
       if (!url.startsWith('/api/') && !url.startsWith('http')) {
-        throw new ClientApiError(
-          `Invalid API request to non-API route: ${url}`,
-          ErrorCode.INTERNAL_SERVER_ERROR,
-          500,
-          { url }
-        );
+        console.warn(`Attempted to fetch non-API route: ${url}`);
+        return null; // Return null instead of throwing an error for non-API routes
       }
       
       const res = await fetch(url, {
