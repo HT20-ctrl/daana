@@ -429,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/platforms/:platformId/facebook/messages", checkAuth, async (req, res) => {
+  app.get("/api/platforms/:platformId/facebook/messages", async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
       // Get user ID from authenticated session
