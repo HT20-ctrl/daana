@@ -6,12 +6,16 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { errorHandler, logger } from "./errorHandling";
 import { setupMonitoring } from "./monitoring";
+import { performanceMiddleware } from "./monitoring/performance";
 
 const app = express();
 
 // Basic middleware setup
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
+
+// Add performance monitoring middleware
+app.use(performanceMiddleware);
 
 // Set up essential security features
 // 1. Configure CORS

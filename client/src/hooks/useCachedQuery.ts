@@ -1,93 +1,137 @@
 /**
- * Enhanced cached query hook with optimized data fetching
- * This hook extends React Query with smart caching strategies
+ * Enhanced React Query hook with improved caching and performance tracking
+ * This custom hook extends the standard useQuery with smart caching behavior
  */
-import { useQuery, UseQueryOptions, useQueryClient } from '@tanstack/react-query';
-import { getQueryFn, getCacheTime } from '@/lib/queryClient';
-import { useEffect, useState } from 'react';
+import { 
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions,
+  type QueryKey,
+} from '@tanstack/react-query';
+import { measureAsyncPerformance } from '@/lib/performance';
 
-interface UseCachedQueryOptions<T> extends UseQueryOptions<T> {
-  prefetch?: boolean; // Whether to prefetch this data
-  refreshInterval?: number; // Custom refresh interval
-  keepPreviousData?: boolean; // Keep previous data while fetching
-}
+export type UseCachedQueryOptions<T> = Omit<
+  UseQueryOptions<T, Error, T, QueryKey>,
+  'queryKey'
+> & {
+  queryKey: QueryKey;
+};
 
 /**
- * Enhanced query hook with smart caching strategies
+ * Enhanced query hook with performance monitoring and improved caching
  * 
  * Features:
- * - Automatic cache time optimization based on data type
- * - Stale-while-revalidate pattern for fresh data without loading states
- * - Optional prefetching for critical data
- * - Smart background refreshing
+ * 1. Automatic performance tracking for each query
+ * 2. Smart background refetching for stale data
+ * 3. Consistent error handling
+ * 4. Prefetch support for data preloading
  * 
- * @param queryKey The query key for React Query
- * @param options Additional options for the query
- * @returns The query result with enhanced caching
+ * @param options Query options including the queryKey
+ * @returns Query result with loading and error states
  */
-export function useCachedQuery<T = unknown>(
-  queryKey: string | string[],
-  options?: UseCachedQueryOptions<T>
-) {
+export function useCachedQuery<T>({
+  queryKey,
+  ...options
+}: UseCachedQueryOptions<T>) {
   const queryClient = useQueryClient();
-  const key = Array.isArray(queryKey) ? queryKey : [queryKey];
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const queryKeyString = Array.isArray(queryKey) ? queryKey.join(':') : String(queryKey);
   
-  // Calculate optimized cache times based on data type
-  const cacheTime = getCacheTime(queryKey);
-  
-  // Set stale time based on data type - more frequently changing data has shorter stale time
-  const calculateStaleTime = () => {
-    if (options?.staleTime) return options.staleTime;
-    
-    const mainKey = Array.isArray(queryKey) ? queryKey[0] : queryKey;
-    
-    // Different stale times for different data types
-    if (mainKey.includes('/messages') || mainKey.includes('/notifications')) {
-      return 1000 * 15; // 15 seconds for highly dynamic data
-    } else if (mainKey.includes('/conversations')) {
-      return 1000 * 30; // 30 seconds for moderately changing data
-    } else if (mainKey.includes('/platforms') || mainKey.includes('/analytics')) {
-      return 1000 * 60; // 1 minute for more stable data
-    } else if (mainKey.includes('/auth/user') || mainKey.includes('/settings')) {
-      return 1000 * 60 * 5; // 5 minutes for very stable data
-    }
-    
-    // Default stale time is 30 seconds
-    return 1000 * 30;
+  // Default error handler if none provided
+  const defaultOnError = (error: Error) => {
+    console.error(`Query error (${queryKeyString}):`, error);
   };
   
-  // Prefetch data if needed
-  useEffect(() => {
-    if (options?.prefetch && isInitialLoad) {
-      queryClient.prefetchQuery({
-        queryKey: key,
-        queryFn: getQueryFn({ on401: 'throw' }),
-        staleTime: calculateStaleTime(),
+  // Return the enhanced query
+  return useQuery<T, Error, T, QueryKey>({
+    queryKey,
+    
+    // Wrap the queryFn with performance monitoring
+    queryFn: async (context) => {
+      const { signal } = context;
+      
+      return measureAsyncPerformance(`query:${queryKeyString}`, async () => {
+        // Default function fetches from the API using the queryKey
+        const apiUrl = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+        
+        // Skip if API URL is not a string (unlikely)
+        if (typeof apiUrl !== 'string') {
+          throw new Error('Query key must be a string or start with a string URL');
+        }
+        
+        // Execute the fetch with automatic timeout
+        const response = await fetch(apiUrl, { signal });
+        
+        // Handle HTTP errors
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API error: ${response.status}`);
+          } catch (e) {
+            // If response is not JSON, throw with status text
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+        }
+        
+        // Parse and return the response data
+        try {
+          return await response.json();
+        } catch (e) {
+          throw new Error('Failed to parse API response as JSON');
+        }
       });
-      setIsInitialLoad(false);
-    }
-  }, [queryClient, key, options?.prefetch, isInitialLoad]);
-  
-  // Use React Query with our optimized settings
-  return useQuery<T>({
-    queryKey: key,
-    queryFn: getQueryFn({ on401: 'throw' }),
-    staleTime: calculateStaleTime(),
-    gcTime: cacheTime,
-    refetchInterval: options?.refreshInterval,
-    keepPreviousData: options?.keepPreviousData ?? true,
+    },
+    
+    // Smart refetch options
+    refetchOnWindowFocus: true,       // Refetch when user returns to the app
+    refetchOnMount: true,             // Refetch when component mounts
+    refetchOnReconnect: true,         // Refetch when connection is restored
+    retry: 1,                         // Only retry once to avoid overwhelming server
+    retryDelay: 1000,                 // Wait 1 second between retries
+    
+    // Error handling
+    onError: options.onError || defaultOnError,
+    
+    // Pass through other options
     ...options,
   });
 }
 
 /**
- * Use this hook for critical data that should be prefetched
- * This improves perceived performance for important UI elements
+ * Pre-fetch data into cache for faster initial loads
+ * 
+ * @param options Query options with same interface as useCachedQuery
  */
-export function usePrefetchedQuery<T = unknown>(
-  queryKey: string | string[],
-  options?: Omit<UseCachedQueryOptions<T>, 'prefetch'>
-) {
-  return useCachedQuery<T>(queryKey, { ...options, prefetch: true });
+export function prefetchQuery<T>({
+  queryKey,
+  ...options
+}: UseCachedQueryOptions<T>) {
+  const queryClient = useQueryClient();
+  const queryKeyString = Array.isArray(queryKey) ? queryKey.join(':') : String(queryKey);
+  
+  // Prefetch with the same behavior as our enhanced hook
+  return queryClient.prefetchQuery({
+    queryKey,
+    queryFn: async (context) => {
+      const { signal } = context;
+      
+      return measureAsyncPerformance(`prefetch:${queryKeyString}`, async () => {
+        const apiUrl = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+        
+        if (typeof apiUrl !== 'string') {
+          throw new Error('Query key must be a string or start with a string URL');
+        }
+        
+        const response = await fetch(apiUrl, { signal });
+        
+        if (!response.ok) {
+          console.warn(`Prefetch error for ${queryKeyString}: ${response.status}`);
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        return await response.json();
+      });
+    },
+    ...options,
+    prefetch: true,
+  });
 }

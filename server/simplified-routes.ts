@@ -77,12 +77,16 @@ import {
 import { checkAuth, enforceDataSegregation, enhancedSecurityCheck } from "./auth";
 
 import errorTestRouter from "./routes/errorTest";
+import performanceRouter from "./routes/performance";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("Setting up simplified routes with enhanced security");
   
   // Register test routes for error handling
   app.use('/api/error-test', errorTestRouter);
+  
+  // Register performance monitoring routes
+  app.use('/api/performance', performanceRouter);
 
   // Create HTTP server
   const httpServer = createServer(app);

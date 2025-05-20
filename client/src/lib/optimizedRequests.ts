@@ -1,174 +1,198 @@
 /**
- * Optimized API request functions with enhanced caching and performance
- * This module provides optimized versions of common API requests
+ * Optimized request helpers with performance monitoring
+ * These provide enhanced caching and performance tracking for common API calls
  */
-import { useCallback } from 'react';
-import { useCachedQuery, usePrefetchedQuery } from '@/hooks/useCachedQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from './queryClient';
-import { useQueryClient } from '@tanstack/react-query';
-import { usePerformanceMetric } from './performance';
-import type { Platform, Conversation, Message, KnowledgeBase, Analytics } from '@shared/schema';
+import { useAuth } from '@/hooks/useAuth';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
+import { measureAsyncPerformance } from './performance';
 
-// ===== PLATFORMS =====
+// Constants for cache durations
+const SHORT_CACHE_TIME = 30 * 1000; // 30 seconds for frequently updated data
+const MEDIUM_CACHE_TIME = 5 * 60 * 1000; // 5 minutes for semi-static data
+const LONG_CACHE_TIME = 30 * 60 * 1000; // 30 minutes for mostly static data
 
 /**
- * Get all platforms with optimized caching
- * - Uses prefetching for faster initial load
- * - Data is refreshed intelligently in the background
+ * Get platforms with optimized caching
+ * Platforms are cached for 5 minutes but re-fetched in the background
  */
-export function usePlatforms() {
-  const metrics = usePerformanceMetric('fetch-platforms');
-  
-  const result = usePrefetchedQuery<Platform[]>('/api/platforms', {
-    onSuccess: () => metrics.stop(),
-    onError: () => metrics.stop(),
+export function useOptimizedPlatforms() {
+  return useCachedQuery({
+    queryKey: ['/api/platforms'],
+    staleTime: MEDIUM_CACHE_TIME,
+    cacheTime: MEDIUM_CACHE_TIME,
+    onSuccess: (data) => {
+      console.log('[Optimized] Platforms loaded:', data.length);
+    }
   });
-  
-  metrics.start();
-  return result;
 }
 
 /**
- * Connection mutation for platforms with cache invalidation
+ * Create a new platform with optimized error handling and cache invalidation
  */
-export function useConnectPlatform() {
+export function useCreatePlatform() {
   const queryClient = useQueryClient();
   
-  const connectPlatform = useCallback(async (platformId: number, connectionData: any) => {
-    const metrics = usePerformanceMetric('connect-platform');
-    metrics.start();
-    
-    const response = await apiRequest(`/api/platforms/${platformId}/connect`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(connectionData),
-    });
-    
-    // Invalidate related caches to ensure fresh data
-    queryClient.invalidateQueries({ queryKey: ['/api/platforms'] });
-    queryClient.invalidateQueries({ queryKey: [`/api/platforms/${platformId}`] });
-    
-    metrics.stop();
-    return response;
-  }, [queryClient]);
-  
-  return { connectPlatform };
-}
-
-// ===== CONVERSATIONS =====
-
-/**
- * Get conversations with optimized caching
- * - Frequently updated data with short cache times
- * - Background refresh for latest conversations
- */
-export function useConversations() {
-  const metrics = usePerformanceMetric('fetch-conversations');
-  
-  const result = useCachedQuery<Conversation[]>('/api/conversations', {
-    refreshInterval: 30000, // Refresh every 30 seconds
-    onSuccess: () => metrics.stop(),
-    onError: () => metrics.stop(),
-  });
-  
-  metrics.start();
-  return result;
-}
-
-/**
- * Get a specific conversation with its messages
- * - Optimized for frequently changing data
- * - Uses short stale times for fresh data
- */
-export function useConversation(id: number) {
-  const queryClient = useQueryClient();
-  const metrics = usePerformanceMetric(`fetch-conversation-${id}`);
-  
-  const result = useCachedQuery<Conversation>(`/api/conversations/${id}`, {
-    enabled: !!id,
-    onSuccess: () => {
-      metrics.stop();
-      // Prefetch messages for this conversation
-      queryClient.prefetchQuery({
-        queryKey: [`/api/conversations/${id}/messages`],
-        staleTime: 1000 * 15, // Short stale time for messages
+  return useMutation({
+    mutationFn: async (platformData: any) => {
+      return await measureAsyncPerformance('createPlatform', async () => {
+        const response = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(platformData),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create platform');
+        }
+        
+        return await response.json();
       });
     },
-    onError: () => metrics.stop(),
+    onSuccess: () => {
+      // Invalidate the platforms cache to show the new platform
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms'] });
+    },
   });
-  
-  metrics.start();
-  return result;
 }
 
 /**
- * Get messages for a conversation with optimized refresh
+ * Get conversations with dynamic cache time based on active status
+ * Active conversations get shorter cache times to stay more up-to-date
  */
-export function useMessages(conversationId: number) {
-  const metrics = usePerformanceMetric(`fetch-messages-${conversationId}`);
+export function useOptimizedConversations() {
+  const { user } = useAuth();
   
-  const result = useCachedQuery<Message[]>(`/api/conversations/${conversationId}/messages`, {
-    enabled: !!conversationId,
-    refreshInterval: 10000, // Refresh every 10 seconds
-    onSuccess: () => metrics.stop(),
-    onError: () => metrics.stop(),
+  return useCachedQuery({
+    queryKey: ['/api/conversations'],
+    staleTime: SHORT_CACHE_TIME, // Conversations change frequently
+    cacheTime: MEDIUM_CACHE_TIME, // But we can keep cache a bit longer
+    enabled: !!user,
+    onSuccess: (data) => {
+      // If there are active conversations, decrease stale time
+      if (data.some((conv: any) => conv.isActive)) {
+        // Background refresh will happen more often for active conversations
+        queryClient.setQueryDefaults(['/api/conversations'], {
+          staleTime: SHORT_CACHE_TIME / 2,
+        });
+      }
+    }
   });
-  
-  metrics.start();
-  return result;
 }
-
-// ===== KNOWLEDGE BASE =====
 
 /**
- * Get knowledge base items with longer cache times
- * - Less frequently changing data
- * - Optimized for read performance
+ * Get a single conversation with optimized caching
  */
-export function useKnowledgeBase() {
-  const metrics = usePerformanceMetric('fetch-knowledge-base');
+export function useOptimizedConversation(conversationId: number) {
+  const { user } = useAuth();
   
-  const result = useCachedQuery<KnowledgeBase[]>('/api/knowledge-base', {
-    onSuccess: () => metrics.stop(),
-    onError: () => metrics.stop(),
+  return useCachedQuery({
+    queryKey: ['/api/conversations', conversationId],
+    staleTime: SHORT_CACHE_TIME, // Single conversation view should be fresh
+    cacheTime: MEDIUM_CACHE_TIME, 
+    enabled: !!user && !!conversationId,
+    onSuccess: (data) => {
+      // If the conversation is active, reduce the stale time even more
+      if (data?.isActive) {
+        queryClient.setQueryDefaults(['/api/conversations', conversationId], {
+          staleTime: SHORT_CACHE_TIME / 4, // Very short stale time for active conversations
+        });
+      }
+    }
   });
-  
-  metrics.start();
-  return result;
 }
-
-// ===== ANALYTICS =====
 
 /**
- * Get analytics data with optimized caching
- * - Moderately changing data
- * - Periodically refreshed for dashboard
+ * Get conversation messages with optimized caching
+ * Messages have shorter cache times to stay current
  */
-export function useAnalytics() {
-  const metrics = usePerformanceMetric('fetch-analytics');
+export function useOptimizedMessages(conversationId: number) {
+  const { user } = useAuth();
   
-  const result = useCachedQuery<Analytics>('/api/analytics', {
-    refreshInterval: 60000, // Refresh every minute
-    onSuccess: () => metrics.stop(),
-    onError: () => metrics.stop(),
+  return useCachedQuery({
+    queryKey: ['/api/conversations', conversationId, 'messages'],
+    staleTime: SHORT_CACHE_TIME / 2, // Messages change very frequently
+    cacheTime: MEDIUM_CACHE_TIME,
+    enabled: !!user && !!conversationId,
+    onSuccess: (data) => {
+      // Update the conversation preview if we have messages
+      if (data && data.length > 0) {
+        queryClient.setQueryData(['/api/conversations'], (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          return oldData.map((conv: any) => {
+            if (conv.id === conversationId) {
+              const lastMessage = data[data.length - 1];
+              return {
+                ...conv,
+                lastMessage: lastMessage.content,
+                lastMessageAt: lastMessage.createdAt,
+              };
+            }
+            return conv;
+          });
+        });
+      }
+    }
   });
-  
-  metrics.start();
-  return result;
 }
-
-// ===== NOTIFICATIONS =====
 
 /**
- * Get notifications with very short cache times
- * - Highly dynamic data that changes frequently
- * - Very short stale time to ensure freshness
+ * Get knowledge base items with longer caching
+ * Knowledge base changes less frequently so we use longer cache times
  */
-export function useNotifications() {
-  const result = useCachedQuery('/api/notifications', {
-    refreshInterval: 15000, // Refresh every 15 seconds
-    staleTime: 5000, // Very short stale time - 5 seconds
+export function useOptimizedKnowledgeBase() {
+  const { user } = useAuth();
+  
+  return useCachedQuery({
+    queryKey: ['/api/knowledge-base'],
+    staleTime: LONG_CACHE_TIME, // Knowledge base rarely changes
+    cacheTime: LONG_CACHE_TIME,
+    enabled: !!user,
+    onSuccess: (data) => {
+      console.log('[Optimized] Knowledge base loaded:', data.length);
+    }
+  });
+}
+
+/**
+ * Get analytics with adaptive refresh intervals
+ * Analytics can be cached longer since they're not time-critical
+ */
+export function useOptimizedAnalytics() {
+  const { user } = useAuth();
+  
+  return useCachedQuery({
+    queryKey: ['/api/analytics'],
+    staleTime: MEDIUM_CACHE_TIME,
+    cacheTime: LONG_CACHE_TIME,
+    enabled: !!user
+  });
+}
+
+/**
+ * Prefetch common data for faster navigation
+ * Call this function when the app loads to warm up the cache
+ */
+export function prefetchCommonData() {
+  const queryClient = useQueryClient();
+  
+  // Prefetch platforms (important for showing connection status)
+  queryClient.prefetchQuery({
+    queryKey: ['/api/platforms'],
+    staleTime: MEDIUM_CACHE_TIME
   });
   
-  return result;
+  // Prefetch conversations (common navigation target)
+  queryClient.prefetchQuery({
+    queryKey: ['/api/conversations'],
+    staleTime: SHORT_CACHE_TIME
+  });
 }
+
+// Global query client access
+const queryClient = useQueryClient();

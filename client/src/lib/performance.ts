@@ -1,190 +1,253 @@
 /**
- * Performance optimization utilities for the Dana AI Platform
- * This module provides tools to optimize application performance
+ * Client-side performance monitoring utilities
+ * These tools help track and optimize frontend performance
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { getCacheTime } from './queryClient';
+
+// Store performance metrics
+const clientPerfMetrics: Record<string, {
+  count: number;
+  totalTime: number;
+  min: number;
+  max: number;
+  recent: number[];
+}> = {};
 
 /**
- * Throttle a function call to limit its execution frequency
- * @param callback The function to throttle
- * @param delay The minimum time between function calls in milliseconds
- * @returns A throttled version of the function
+ * Measure the execution time of a function
+ * @param name Identifier for the operation being measured
+ * @param fn Function to measure
+ * @returns The result of the function
  */
-export function useThrottle<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number = 300
-): T {
-  const lastCall = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastArgs = useRef<any[]>([]);
-
-  const throttledFn = useCallback((...args: Parameters<T>) => {
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCall.current;
+export function measurePerformance<T>(name: string, fn: () => T): T {
+  const start = performance.now();
+  try {
+    return fn();
+  } finally {
+    const elapsed = performance.now() - start;
     
-    lastArgs.current = args;
-    
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+    // Record the metric
+    if (!clientPerfMetrics[name]) {
+      clientPerfMetrics[name] = {
+        count: 0,
+        totalTime: 0,
+        min: Number.MAX_VALUE,
+        max: 0,
+        recent: [],
+      };
     }
     
-    if (timeSinceLastCall >= delay) {
-      lastCall.current = now;
-      return callback(...args);
-    } else {
-      timeoutRef.current = setTimeout(() => {
-        lastCall.current = Date.now();
-        timeoutRef.current = null;
-        callback(...lastArgs.current);
-      }, delay - timeSinceLastCall);
+    const metric = clientPerfMetrics[name];
+    metric.count++;
+    metric.totalTime += elapsed;
+    metric.min = Math.min(metric.min, elapsed);
+    metric.max = Math.max(metric.max, elapsed);
+    
+    // Keep the 10 most recent measurements
+    metric.recent.push(elapsed);
+    if (metric.recent.length > 10) {
+      metric.recent.shift();
     }
-  }, [callback, delay]);
-
-  return throttledFn as T;
-}
-
-/**
- * Optimize resource loading with priority-based loading
- * @param resources Array of resource URLs to preload
- * @param priority 'high' | 'low' | 'auto' - priority of the resources
- */
-export function useResourcePreload(
-  resources: string[],
-  priority: 'high' | 'low' | 'auto' = 'auto'
-): void {
-  useEffect(() => {
-    // Skip in SSR
-    if (typeof window === 'undefined') return;
-    
-    // Create link elements for preloading
-    resources.forEach(resource => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      
-      // Determine resource type
-      if (resource.endsWith('.js')) {
-        link.as = 'script';
-      } else if (resource.endsWith('.css')) {
-        link.as = 'style';
-      } else if (/\.(png|jpe?g|gif|webp|avif)$/i.test(resource)) {
-        link.as = 'image';
-      } else if (/\.(woff2?|ttf|otf|eot)$/i.test(resource)) {
-        link.as = 'font';
-      }
-      
-      // Set fetch priority
-      if (priority !== 'auto') {
-        link.setAttribute('fetchpriority', priority);
-      }
-      
-      link.href = resource;
-      document.head.appendChild(link);
-    });
-    
-    // Cleanup function
-    return () => {
-      resources.forEach(resource => {
-        const links = document.querySelectorAll(`link[href="${resource}"]`);
-        links.forEach(link => link.remove());
-      });
-    };
-  }, [resources, priority]);
-}
-
-/**
- * Calculate optimized cache settings for different types of data
- * @param dataType Type of data being cached
- * @returns Optimal cache configuration for the data type
- */
-export function getOptimalCacheConfig(dataType: string) {
-  // Convert to query key format for reusing existing cache time logic
-  const queryKey = `/${dataType}`;
-  
-  // Get optimal cache time from our existing cache time calculator
-  const cacheTime = getCacheTime(queryKey);
-  
-  // Calculate optimized stale time based on data type
-  let staleTime = 1000 * 30; // Default 30 seconds
-  
-  if (dataType.includes('messages') || dataType.includes('notifications')) {
-    staleTime = 1000 * 15; // 15 seconds for dynamic data
-  } else if (dataType.includes('conversations')) {
-    staleTime = 1000 * 30; // 30 seconds
-  } else if (dataType.includes('platforms') || dataType.includes('analytics')) {
-    staleTime = 1000 * 60; // 1 minute for stable data
-  } else if (dataType.includes('user') || dataType.includes('settings')) {
-    staleTime = 1000 * 60 * 5; // 5 minutes for very stable data
-  }
-  
-  return {
-    cacheTime,
-    staleTime,
-    refetchOnWindowFocus: staleTime < 60000, // Only refetch on focus for fast-changing data
-    refetchOnMount: staleTime < 300000, // Only refetch on mount for moderately stable data
-  };
-}
-
-/**
- * Intersection Observer hook for lazy loading components and images
- * @param options IntersectionObserver options
- * @returns [ref, isVisible] - Ref to attach to the element, and whether it's visible
- */
-export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
-  options: IntersectionObserverInit = { threshold: 0.1, rootMargin: '100px' }
-): [React.RefObject<T>, boolean] {
-  const ref = useRef<T>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  
-  useEffect(() => {
-    if (!ref.current) return;
-    
-    const element = ref.current;
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(element);
-        }
-      });
-    }, options);
-    
-    observer.observe(element);
-    
-    return () => {
-      if (element) observer.unobserve(element);
-    };
-  }, [options]);
-  
-  return [ref, isVisible];
-}
-
-/**
- * Measure and log performance metrics for debugging
- * @param metricName Name of the metric to measure
- * @returns Functions to start and stop measuring the metric
- */
-export function usePerformanceMetric(metricName: string) {
-  const startTimeRef = useRef<number>(0);
-  
-  const start = useCallback(() => {
-    startTimeRef.current = performance.now();
-  }, []);
-  
-  const stop = useCallback(() => {
-    if (startTimeRef.current === 0) return 0;
-    
-    const endTime = performance.now();
-    const duration = endTime - startTimeRef.current;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`⚡ Performance Metric - ${metricName}: ${duration.toFixed(2)}ms`);
+      console.log(`⚡ Client Perf [${name}]: ${elapsed.toFixed(2)}ms`);
+    }
+  }
+}
+
+/**
+ * Measure the execution time of an async function
+ * @param name Identifier for the operation being measured
+ * @param fn Async function to measure
+ * @returns Promise resolving to the result of the function
+ */
+export async function measureAsyncPerformance<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  try {
+    return await fn();
+  } finally {
+    const elapsed = performance.now() - start;
+    
+    // Record the metric
+    if (!clientPerfMetrics[name]) {
+      clientPerfMetrics[name] = {
+        count: 0,
+        totalTime: 0,
+        min: Number.MAX_VALUE,
+        max: 0,
+        recent: [],
+      };
     }
     
-    startTimeRef.current = 0;
-    return duration;
-  }, [metricName]);
+    const metric = clientPerfMetrics[name];
+    metric.count++;
+    metric.totalTime += elapsed;
+    metric.min = Math.min(metric.min, elapsed);
+    metric.max = Math.max(metric.max, elapsed);
+    
+    // Keep the 10 most recent measurements
+    metric.recent.push(elapsed);
+    if (metric.recent.length > 10) {
+      metric.recent.shift();
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`⚡ Client Async Perf [${name}]: ${elapsed.toFixed(2)}ms`);
+    }
+  }
+}
+
+/**
+ * Get all recorded performance metrics
+ * @returns The full performance metrics data
+ */
+export function getClientPerformanceMetrics() {
+  const result: Record<string, {
+    count: number;
+    avgTime: number;
+    minTime: number;
+    maxTime: number;
+    recentAvg: number;
+  }> = {};
   
-  return { start, stop };
+  for (const [name, metric] of Object.entries(clientPerfMetrics)) {
+    result[name] = {
+      count: metric.count,
+      avgTime: metric.totalTime / metric.count,
+      minTime: metric.min,
+      maxTime: metric.max,
+      recentAvg: metric.recent.reduce((sum, val) => sum + val, 0) / metric.recent.length,
+    };
+  }
+  
+  return result;
+}
+
+/**
+ * Reset all performance metrics
+ */
+export function resetClientPerformanceMetrics() {
+  for (const key of Object.keys(clientPerfMetrics)) {
+    delete clientPerfMetrics[key];
+  }
+}
+
+/**
+ * Record a web vitals metric
+ * @param metric The web vitals metric to record
+ */
+export function recordWebVital(metric: {
+  name: string;
+  value: number;
+  delta: number;
+}) {
+  // Log web vitals metrics in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`📊 Web Vital: ${metric.name} = ${metric.value}`);
+  }
+  
+  // Send to server in production
+  if (process.env.NODE_ENV === 'production') {
+    // This would be implemented to send metrics to the backend
+    // in a production environment
+  }
+}
+
+/**
+ * Track resource timing for critical resources
+ */
+export function trackResourceTiming() {
+  if (window.performance && window.performance.getEntriesByType) {
+    const resources = window.performance.getEntriesByType('resource');
+    
+    // Group resources by type
+    const byType: Record<string, {
+      count: number;
+      totalDuration: number;
+      items: PerformanceResourceTiming[];
+    }> = {};
+    
+    for (const resource of resources) {
+      const r = resource as PerformanceResourceTiming;
+      
+      // Extract resource type from the initiatorType or URL
+      let type = r.initiatorType;
+      
+      if (!byType[type]) {
+        byType[type] = {
+          count: 0,
+          totalDuration: 0,
+          items: [],
+        };
+      }
+      
+      byType[type].count++;
+      byType[type].totalDuration += r.duration;
+      byType[type].items.push(r);
+    }
+    
+    // Log slow resource types
+    for (const [type, data] of Object.entries(byType)) {
+      const avgDuration = data.totalDuration / data.count;
+      
+      if (avgDuration > 100) { // More than 100ms average is slow
+        console.warn(`⚠️ Slow resource type [${type}]: ${avgDuration.toFixed(2)}ms avg (${data.count} resources)`);
+        
+        // Find the slowest resources of this type
+        const slowItems = [...data.items]
+          .sort((a, b) => b.duration - a.duration)
+          .slice(0, 3); // Top 3 slowest
+        
+        for (const item of slowItems) {
+          console.warn(`  - ${item.name.split('?')[0]} (${item.duration.toFixed(2)}ms)`);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Monitor component render times
+ * Usage: wrapWithPerfMonitoring(MyComponent, "MyComponent")
+ * 
+ * @param Component The React component to monitor
+ * @param componentName Name of the component for metrics
+ * @returns Wrapped component with performance monitoring
+ */
+export function wrapWithPerfMonitoring<P extends object>(
+  Component: React.ComponentType<P>,
+  componentName: string
+): React.FC<P> {
+  return (props: P) => {
+    const start = performance.now();
+    const result = <Component {...props} />;
+    const elapsed = performance.now() - start;
+    
+    // Record render time metric
+    if (!clientPerfMetrics[`render:${componentName}`]) {
+      clientPerfMetrics[`render:${componentName}`] = {
+        count: 0,
+        totalTime: 0,
+        min: Number.MAX_VALUE,
+        max: 0,
+        recent: [],
+      };
+    }
+    
+    const metric = clientPerfMetrics[`render:${componentName}`];
+    metric.count++;
+    metric.totalTime += elapsed;
+    metric.min = Math.min(metric.min, elapsed);
+    metric.max = Math.max(metric.max, elapsed);
+    metric.recent.push(elapsed);
+    if (metric.recent.length > 10) {
+      metric.recent.shift();
+    }
+    
+    // Log slow renders in development
+    if (process.env.NODE_ENV === 'development' && elapsed > 16) { // 16ms = 60fps
+      console.warn(`🐢 Slow render: ${componentName} took ${elapsed.toFixed(2)}ms`);
+    }
+    
+    return result;
+  };
 }
