@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Knowledge Base API
-  app.get("/api/knowledge-base", checkAuth, async (req, res) => {
+  app.get("/api/knowledge-base", async (req, res) => {
     try {
       // Get user ID from authenticated session
       const user = req.user as any;
