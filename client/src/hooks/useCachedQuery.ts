@@ -10,14 +10,7 @@ import {
 } from '@tanstack/react-query';
 import { measureAsyncPerformance } from '@/lib/performance';
 
-export type UseCachedQueryOptions<T> = Omit<
-  UseQueryOptions<T, Error, T, QueryKey>,
-  'queryKey'
-> & {
-  queryKey: QueryKey;
-  onSuccess?: (data: T) => void; 
-  onError?: (error: Error) => void;
-};
+export type UseCachedQueryOptions<T> = UseQueryOptions<T, Error, T, QueryKey>;
 
 /**
  * Enhanced query hook with performance monitoring and improved caching
@@ -33,17 +26,10 @@ export type UseCachedQueryOptions<T> = Omit<
  */
 export function useCachedQuery<T>({
   queryKey,
-  onSuccess,
-  onError,
   ...options
 }: UseCachedQueryOptions<T>) {
   const queryClient = useQueryClient();
   const queryKeyString = Array.isArray(queryKey) ? queryKey.join(':') : String(queryKey);
-  
-  // Default error handler if none provided
-  const defaultOnError = (error: Error) => {
-    console.error(`Query error (${queryKeyString}):`, error);
-  };
   
   // Return the enhanced query with all options properly set
   return useQuery<T, Error, T, QueryKey>({
@@ -92,11 +78,7 @@ export function useCachedQuery<T>({
     retry: 1,                         // Only retry once to avoid overwhelming server
     retryDelay: 1000,                 // Wait 1 second between retries
     
-    // Handle success and error callbacks
-    onSuccess: onSuccess,
-    onError: onError || defaultOnError,
-    
-    // Pass through other options
+    // Pass through other options (including onSuccess, onError)
     ...options,
   });
 }

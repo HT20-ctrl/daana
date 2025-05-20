@@ -18,11 +18,11 @@ const LONG_CACHE_TIME = 30 * 60 * 1000; // 30 minutes for mostly static data
  * Platforms are cached for 5 minutes but re-fetched in the background
  */
 export function useOptimizedPlatforms() {
-  return useCachedQuery({
+  return useCachedQuery<any[]>({
     queryKey: ['/api/platforms'],
     staleTime: MEDIUM_CACHE_TIME,
     gcTime: MEDIUM_CACHE_TIME,
-    onSuccess: (data) => {
+    onSuccess: (data: any[]) => {
       console.log('[Optimized] Platforms loaded:', data.length);
     }
   });
@@ -66,15 +66,16 @@ export function useCreatePlatform() {
  */
 export function useOptimizedConversations() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  return useCachedQuery({
+  return useCachedQuery<any[]>({
     queryKey: ['/api/conversations'],
     staleTime: SHORT_CACHE_TIME, // Conversations change frequently
     gcTime: MEDIUM_CACHE_TIME, // But we can keep cache a bit longer
     enabled: !!user,
-    onSuccess: (data) => {
+    onSuccess: (data: any[]) => {
       // If there are active conversations, decrease stale time
-      if (data.some((conv: any) => conv.isActive)) {
+      if (data.some((conv) => conv.isActive)) {
         // Background refresh will happen more often for active conversations
         queryClient.setQueryDefaults(['/api/conversations'], {
           staleTime: SHORT_CACHE_TIME / 2,
@@ -89,13 +90,14 @@ export function useOptimizedConversations() {
  */
 export function useOptimizedConversation(conversationId: number) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  return useCachedQuery({
+  return useCachedQuery<{isActive?: boolean}>({
     queryKey: ['/api/conversations', conversationId],
     staleTime: SHORT_CACHE_TIME, // Single conversation view should be fresh
     gcTime: MEDIUM_CACHE_TIME, 
     enabled: !!user && !!conversationId,
-    onSuccess: (data) => {
+    onSuccess: (data: {isActive?: boolean}) => {
       // If the conversation is active, reduce the stale time even more
       if (data?.isActive) {
         queryClient.setQueryDefaults(['/api/conversations', conversationId], {
@@ -112,16 +114,17 @@ export function useOptimizedConversation(conversationId: number) {
  */
 export function useOptimizedMessages(conversationId: number) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  return useCachedQuery({
+  return useCachedQuery<any[]>({
     queryKey: ['/api/conversations', conversationId, 'messages'],
     staleTime: SHORT_CACHE_TIME / 2, // Messages change very frequently
     gcTime: MEDIUM_CACHE_TIME,
     enabled: !!user && !!conversationId,
-    onSuccess: (data) => {
+    onSuccess: (data: any[]) => {
       // Update the conversation preview if we have messages
       if (data && data.length > 0) {
-        queryClient.setQueryData(['/api/conversations'], (oldData: any) => {
+        queryClient.setQueryData(['/api/conversations'], (oldData: any[]) => {
           if (!oldData) return oldData;
           
           return oldData.map((conv: any) => {
@@ -148,12 +151,12 @@ export function useOptimizedMessages(conversationId: number) {
 export function useOptimizedKnowledgeBase() {
   const { user } = useAuth();
   
-  return useCachedQuery({
+  return useCachedQuery<any[]>({
     queryKey: ['/api/knowledge-base'],
     staleTime: LONG_CACHE_TIME, // Knowledge base rarely changes
     gcTime: LONG_CACHE_TIME,
     enabled: !!user,
-    onSuccess: (data) => {
+    onSuccess: (data: any[]) => {
       console.log('[Optimized] Knowledge base loaded:', data.length);
     }
   });
@@ -166,7 +169,7 @@ export function useOptimizedKnowledgeBase() {
 export function useOptimizedAnalytics() {
   const { user } = useAuth();
   
-  return useCachedQuery({
+  return useCachedQuery<any>({
     queryKey: ['/api/analytics'],
     staleTime: MEDIUM_CACHE_TIME,
     gcTime: LONG_CACHE_TIME,
