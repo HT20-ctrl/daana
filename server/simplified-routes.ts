@@ -66,6 +66,8 @@ import {
   getSalesforceLeads,
   createSalesforceLead,
   getSalesforceOpportunities,
+  getSalesforceAccounts,
+  disconnectSalesforce,
   isSalesforceConfigured,
   getSalesforceStatus
 } from "./platforms/salesforce";
@@ -1042,98 +1044,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce platform routes
   app.get("/api/platforms/salesforce/status", getSalesforceStatus);
   
-  app.get("/api/platforms/salesforce/connect", async (req, res) => {
-    try {
-      // Get user ID - for demo, always use "1"
-      const userId = "1";
-      
-      // Check if we already have a connected Salesforce platform
-      const userPlatforms = await storage.getPlatformsByUserId(userId);
-      const existingSalesforcePlatforms = userPlatforms.filter(p => 
-        p.name.toLowerCase() === "salesforce" && p.isConnected
-      );
-      
-      // Disconnect existing Salesforce platforms first
-      for (const platform of existingSalesforcePlatforms) {
-        await storage.updatePlatform(platform.id, {
-          isConnected: false,
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null
-        });
-        console.log(`Disconnected existing Salesforce platform ID: ${platform.id}`);
-      }
-      
-      // Create new mock Salesforce connection for development
-      const newPlatform = await storage.createPlatform({
-        userId,
-        name: "salesforce",
-        displayName: "Salesforce CRM",
-        accessToken: "mock-salesforce-token-" + Date.now(),
-        refreshToken: "mock-salesforce-refresh-token",
-        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        isConnected: true
-      });
-      
-      console.log(`Created new Salesforce connection with ID: ${newPlatform.id}`);
-      
-      try {
-        // Redirect to settings page with success parameter
-        return res.redirect('/app/settings?tab=platforms&salesforce_connected=true');
-      } catch (redirectError) {
-        // If redirect fails, return success JSON
-        console.log("Redirect failed, returning JSON response");
-        return res.status(200).json({
-          success: true,
-          message: "Salesforce connected successfully",
-          redirectTo: '/app/settings?tab=platforms&salesforce_connected=true'
-        });
-      }
-    } catch (error) {
-      console.error("Error connecting to Salesforce:", error);
-      return res.status(500).json({ message: "Failed to connect to Salesforce" });
-    }
-  });
+  // OAuth 2.0 connection to Salesforce
+  app.get("/api/platforms/salesforce/connect", connectSalesforce);
   
-  app.post("/api/platforms/salesforce/disconnect", async (req, res) => {
-    try {
-      const userId = "1"; // Demo user ID
-      
-      // Find all Salesforce platforms to disconnect
-      const platforms = await storage.getPlatformsByUserId(userId);
-      const salesforcePlatforms = platforms.filter(p => 
-        p.name.toLowerCase() === "salesforce" && p.isConnected
-      );
-      
-      if (salesforcePlatforms.length === 0) {
-        return res.status(404).json({ message: "No connected Salesforce platform found" });
-      }
-      
-      // Disconnect all matching platforms
-      for (const platform of salesforcePlatforms) {
-        await storage.updatePlatform(platform.id, {
-          isConnected: false,
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null
-        });
-        console.log(`Disconnected Salesforce platform ID: ${platform.id}`);
-      }
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "Salesforce has been disconnected successfully" 
-      });
-    } catch (error) {
-      console.error("Error disconnecting Salesforce:", error);
-      return res.status(500).json({ message: "Failed to disconnect Salesforce" });
-    }
-  });
-  
+  // OAuth 2.0 callback handler
   app.get("/api/platforms/salesforce/callback", salesforceCallback);
-  app.get("/api/platforms/salesforce/leads", getSalesforceLeads);
-  app.post("/api/platforms/salesforce/leads", createSalesforceLead);
-  app.get("/api/platforms/salesforce/opportunities", getSalesforceOpportunities);
+  
+  // Disconnect from Salesforce
+  app.post("/api/platforms/salesforce/disconnect", disconnectSalesforce);
+  
+  // Salesforce data endpoints with proper platform ID
+  app.get("/api/platforms/:platformId/salesforce/accounts", getSalesforceAccounts);
+  app.get("/api/platforms/:platformId/salesforce/leads", getSalesforceLeads);
+  app.post("/api/platforms/:platformId/salesforce/leads", createSalesforceLead);
+  app.get("/api/platforms/:platformId/salesforce/opportunities", getSalesforceOpportunities);
 
   return httpServer;
 }
