@@ -196,7 +196,7 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome back, {getUserFirstName()}!</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Welcome back, {getUserFirstName()}!</h1>
             <p className="mt-1 text-sm text-gray-600">Here's what's happening with your social media accounts today.</p>
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
