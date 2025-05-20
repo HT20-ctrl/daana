@@ -2,7 +2,7 @@
  * Performance optimizations for database queries
  * This module provides optimized query helpers that leverage our database indexes
  */
-import { db } from "./db";
+import { db, executeWithTimeout } from "./dbConfig";
 import { eq, and, desc, lte, gte, sql, isNull, isNotNull } from "drizzle-orm";
 import {
   users,
