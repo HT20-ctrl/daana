@@ -340,6 +340,56 @@ async function fetchGoogleUserInfo(accessToken: string) {
   }
 }
 
+// Test email sending via Gmail API
+export async function testSendEmail(req: Request, res: Response) {
+  try {
+    // Get user ID from the session or use demo user
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // Find the email platform for this user
+    const platforms = await storage.getPlatformsByUserId(userId);
+    const gmailPlatform = platforms.find(p => 
+      p.name === "email" && 
+      p.isConnected && 
+      p.displayName.toLowerCase().includes("gmail")
+    );
+    
+    if (!gmailPlatform || !gmailPlatform.accessToken) {
+      return res.status(400).json({ 
+        success: false,
+        message: "No connected Gmail account found. Please connect Gmail first."
+      });
+    }
+    
+    // Extract recipient email from query params or use default
+    const { to = "test@example.com", subject = "Test Email from Dana AI", message = "This is a test email sent from Dana AI platform using the Gmail API." } = req.query;
+    
+    // Send test email via Gmail API
+    const result = await sendEmailViaGmail(
+      gmailPlatform.accessToken,
+      to.toString(),
+      subject.toString(),
+      message.toString()
+    );
+    
+    return res.json({
+      success: true,
+      message: "Test email sent successfully via Gmail API",
+      details: result
+    });
+  } catch (error) {
+    console.error("Error sending test email:", error);
+    let errorMessage = "Failed to send test email";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return res.status(500).json({ 
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
 // Get Email messages (inbox)
 export async function getEmailMessages(req: Request, res: Response) {
   if (!isEmailConfigured()) {
@@ -456,7 +506,10 @@ export async function sendEmailMessage(req: Request, res: Response) {
   }
 }
 
-// Function to send an email via Gmail API
+/**
+ * Function to send an email via Gmail API using OAuth2 credentials
+ * Uses MIME format to properly structure the email content
+ */
 async function sendEmailViaGmail(accessToken: string, to: string, subject: string, messageText: string): Promise<any> {
   try {
     // Get the user ID associated with this token (for token refresh)
