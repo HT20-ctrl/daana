@@ -787,10 +787,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/platforms/:platformId/slack/messages", async (req, res) => {
+  app.post("/api/platforms/:platformId/slack/messages", checkAuth, async (req, res) => {
     try {
       const { message } = req.body;
       const platformId = parseInt(req.params.platformId);
+      
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
       
       if (!message) {
         return res.status(400).json({ error: "Message content is required" });
