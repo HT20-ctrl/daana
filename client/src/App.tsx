@@ -6,24 +6,28 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "next-themes";
 import { User } from "@shared/schema";
+import { lazy, Suspense } from "react";
 
 // Layout
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
-// Pages
-import Dashboard from "@/pages/dashboard";
-import Conversations from "@/pages/conversations";
-import KnowledgeBase from "@/pages/knowledge-base";
-import AiResponses from "@/pages/ai-responses";
-import Analytics from "@/pages/analytics";
-import Settings from "@/pages/settings";
-import Search from "@/pages/search";
-import NotFound from "@/pages/not-found";
-import GoogleAuthPage from "@/pages/google-auth";
-import LandingPage from "@/pages/landing";
-import SignInPage from "@/pages/signin";
-import ConversationDetail from "@/pages/conversation-detail";
+// Loading component for lazy loading
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Lazy-loaded pages for code splitting
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Conversations = lazy(() => import("@/pages/conversations"));
+const KnowledgeBase = lazy(() => import("@/pages/knowledge-base"));
+const AiResponses = lazy(() => import("@/pages/ai-responses"));
+const Analytics = lazy(() => import("@/pages/analytics"));
+const Settings = lazy(() => import("@/pages/settings"));
+const Search = lazy(() => import("@/pages/search"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const GoogleAuthPage = lazy(() => import("@/pages/google-auth"));
+const LandingPage = lazy(() => import("@/pages/landing"));
+const SignInPage = lazy(() => import("@/pages/signin"));
+const ConversationDetail = lazy(() => import("@/pages/conversation-detail"));
 
 // Auth loading screen
 function LoadingScreen() {
@@ -55,7 +59,24 @@ function MainApp() {
     profileImageUrl: null,
     role: "admin",
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    userSettings: {
+      aiSettings: {
+        model: "gpt-4o",
+        temperature: 0.7,
+        maxTokens: 2048,
+        responseTimeout: 30000,
+        enableKnowledgeBase: true,
+        fallbackToHuman: true
+      },
+      notificationSettings: {
+        emailNotifications: true,
+        desktopNotifications: true,
+        newMessageAlerts: true,
+        assignmentNotifications: true,
+        summaryReports: true
+      }
+    }
   };
 
   // Use demo user if not authenticated
@@ -67,32 +88,33 @@ function MainApp() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header user={currentUser} />
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
-          <Switch>
-            <Route path="/app/conversations/:id">
-              <ConversationDetail />
-            </Route>
-            <Route path="/app/conversations">
-              <Conversations />
-            </Route>
-            <Route path="/app/knowledge-base">
-              <KnowledgeBase />
-            </Route>
-            <Route path="/app/ai-responses">
-              <AiResponses />
-            </Route>
-            <Route path="/app/analytics">
-              <Analytics />
-            </Route>
-            <Route path="/app/settings">
-              <Settings />
-            </Route>
-            <Route path="/app/search">
-              <Search />
-            </Route>
-            <Route>
-              <Dashboard />
-            </Route>
-          </Switch>
+          {/* PageSkeleton component for nicer loading experience */}
+          <Suspense fallback={
+            <div className="space-y-6 w-full">
+              <Skeleton className="h-8 w-2/3 mb-6" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Skeleton className="h-48 rounded-lg" />
+                <Skeleton className="h-48 rounded-lg" />
+                <Skeleton className="h-48 rounded-lg" />
+              </div>
+              <div className="space-y-4 mt-6">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+              </div>
+            </div>
+          }>
+            <Switch>
+              <Route path="/app/conversations/:id" component={ConversationDetail} />
+              <Route path="/app/conversations" component={Conversations} />
+              <Route path="/app/knowledge-base" component={KnowledgeBase} />
+              <Route path="/app/ai-responses" component={AiResponses} />
+              <Route path="/app/analytics" component={Analytics} />
+              <Route path="/app/settings" component={Settings} />
+              <Route path="/app/search" component={Search} />
+              <Route component={Dashboard} />
+            </Switch>
+          </Suspense>
         </main>
       </div>
     </div>

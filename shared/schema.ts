@@ -38,63 +38,130 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const platforms = pgTable("platforms", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  name: varchar("name").notNull(), // e.g., "facebook", "instagram", "whatsapp"
-  displayName: varchar("display_name").notNull(),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  tokenExpiry: timestamp("token_expiry"),
-  metadata: jsonb("metadata"), // Store platform-specific metadata (instance URLs, org IDs, etc.)
-  isConnected: boolean("is_connected").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const platforms = pgTable(
+  "platforms", 
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    name: varchar("name").notNull(), // e.g., "facebook", "instagram", "whatsapp"
+    displayName: varchar("display_name").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    tokenExpiry: timestamp("token_expiry"),
+    metadata: jsonb("metadata"), // Store platform-specific metadata (instance URLs, org IDs, etc.)
+    isConnected: boolean("is_connected").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      // Index for faster queries by userId - most common query
+      userIdIdx: index("platforms_user_id_idx").on(table.userId),
+      // Index for faster platform name lookup
+      nameIdx: index("platforms_name_idx").on(table.name),
+      // Index for finding connected platforms quickly
+      isConnectedIdx: index("platforms_is_connected_idx").on(table.isConnected),
+    };
+  }
+);
 
-export const conversations = pgTable("conversations", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  platformId: integer("platform_id").references(() => platforms.id),
-  customerName: varchar("customer_name").notNull(),
-  customerAvatar: varchar("customer_avatar"),
-  lastMessage: text("last_message"),
-  lastMessageAt: timestamp("last_message_at").defaultNow(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const conversations = pgTable(
+  "conversations", 
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    platformId: integer("platform_id").references(() => platforms.id),
+    customerName: varchar("customer_name").notNull(),
+    customerAvatar: varchar("customer_avatar"),
+    lastMessage: text("last_message"),
+    lastMessageAt: timestamp("last_message_at").defaultNow(),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      // Index for faster queries by userId - most common query pattern
+      userIdIdx: index("conversations_user_id_idx").on(table.userId),
+      // Index for platform filtering - common in dashboard views
+      platformIdIdx: index("conversations_platform_id_idx").on(table.platformId),
+      // Compound index for finding active conversations for a user
+      activeUserIdx: index("conversations_active_user_idx").on(table.userId, table.isActive),
+      // Index for sorting by most recent conversations
+      lastMessageAtIdx: index("conversations_last_message_at_idx").on(table.lastMessageAt),
+    };
+  }
+);
 
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
-  content: text("content").notNull(),
-  isFromCustomer: boolean("is_from_customer").notNull(),
-  isAiGenerated: boolean("is_ai_generated").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const messages = pgTable(
+  "messages", 
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
+    content: text("content").notNull(),
+    isFromCustomer: boolean("is_from_customer").notNull(),
+    isAiGenerated: boolean("is_ai_generated").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      // Index for faster lookup of messages by conversation
+      conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
+      // Index for timeline sorting
+      createdAtIdx: index("messages_created_at_idx").on(table.createdAt),
+      // Index for filtering AI-generated responses
+      aiGeneratedIdx: index("messages_ai_generated_idx").on(table.isAiGenerated),
+    };
+  }
+);
 
-export const knowledgeBase = pgTable("knowledge_base", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  fileName: varchar("file_name").notNull(),
-  fileType: varchar("file_type").notNull(), // e.g., "pdf", "docx", "txt"
-  fileSize: integer("file_size").notNull(),
-  content: text("content"),
-  filePath: varchar("file_path"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const knowledgeBase = pgTable(
+  "knowledge_base", 
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    fileName: varchar("file_name").notNull(),
+    fileType: varchar("file_type").notNull(), // e.g., "pdf", "docx", "txt"
+    fileSize: integer("file_size").notNull(),
+    content: text("content"),
+    filePath: varchar("file_path"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      // Index for faster queries by userId
+      userIdIdx: index("knowledge_base_user_id_idx").on(table.userId),
+      // Index for file type filtering
+      fileTypeIdx: index("knowledge_base_file_type_idx").on(table.fileType),
+      // Index for sorting by most recent files
+      updatedAtIdx: index("knowledge_base_updated_at_idx").on(table.updatedAt),
+    };
+  }
+);
 
-export const analytics = pgTable("analytics", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  totalMessages: integer("total_messages").default(0),
-  aiResponses: integer("ai_responses").default(0),
-  manualResponses: integer("manual_responses").default(0),
-  sentimentScore: integer("sentiment_score").default(0),
-  date: timestamp("date").defaultNow(),
-});
+export const analytics = pgTable(
+  "analytics", 
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    totalMessages: integer("total_messages").default(0),
+    aiResponses: integer("ai_responses").default(0),
+    manualResponses: integer("manual_responses").default(0),
+    sentimentScore: integer("sentiment_score").default(0),
+    date: timestamp("date").defaultNow(),
+  },
+  (table) => {
+    return {
+      // Index for faster queries by userId
+      userIdIdx: index("analytics_user_id_idx").on(table.userId),
+      // Index for date-based queries (trends, reports)
+      dateIdx: index("analytics_date_idx").on(table.date),
+      // Compound index for user analytics over time
+      userDateIdx: index("analytics_user_date_idx").on(table.userId, table.date),
+    };
+  }
+);
 
 // Export types and schemas
 export type UpsertUser = typeof users.$inferInsert;

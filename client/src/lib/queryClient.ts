@@ -147,13 +147,40 @@ export const getQueryFn: <T>(options: {
     }
   };
 
+/**
+ * Configure cache time based on data type
+ * - Frequently changing data (messages, notifications): short cache
+ * - Relatively stable data (platforms, knowledge base): longer cache
+ * - User settings, profile info: very long cache
+ */
+export const getCacheTime = (queryKey: string | string[]): number => {
+  const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+  
+  // Optimize caching strategy based on data type
+  if (key.includes('/notifications') || key.includes('/messages')) {
+    return 1000 * 60 * 1; // 1 minute for frequently changing data
+  } else if (key.includes('/conversations') || key.includes('/analytics')) {
+    return 1000 * 60 * 5; // 5 minutes for moderately changing data
+  } else if (key.includes('/platforms') || key.includes('/knowledge-base')) {
+    return 1000 * 60 * 30; // 30 minutes for relatively stable data
+  } else if (key.includes('/auth/user') || key.includes('/settings')) {
+    return 1000 * 60 * 60; // 1 hour for stable user data
+  } 
+  
+  // Default cache time: 5 minutes
+  return 1000 * 60 * 5;
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      // Use staleTime to optimize when to refetch data
+      staleTime: 1000 * 30, // Default stale time is 30 seconds
+      // Keep cached data for the time determined by the data type
+      gcTime: 1000 * 60 * 10, // Default garbage collection time is 10 minutes
       retry: false,
     },
     mutations: {
