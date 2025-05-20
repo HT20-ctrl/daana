@@ -238,9 +238,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Knowledge Base API
-  app.get("/api/knowledge-base", async (req, res) => {
+  app.get("/api/knowledge-base", checkAuth, async (req, res) => {
     try {
-      const userId = "1"; // Demo user ID
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub || "1"; // Use authenticated user ID
       const knowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
       res.json(knowledgeBase);
     } catch (error) {
@@ -258,9 +260,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/knowledge-base", upload.single("file"), async (req, res) => {
+  app.post("/api/knowledge-base", checkAuth, upload.single("file"), async (req, res) => {
     try {
-      const userId = "1"; // Demo user ID
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub || "1"; // Use authenticated user ID
       const file = req.file;
       
       if (!file) {
