@@ -130,7 +130,7 @@ export class MemStorage implements IStorage {
       name: "instagram",
       displayName: "Instagram",
       userId: "1",
-      isConnected: false,
+      isConnected: false, // Set to false by default to allow OAuth connection
       accessToken: null,
       refreshToken: null,
       tokenExpiry: null,

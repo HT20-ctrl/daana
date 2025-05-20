@@ -210,27 +210,47 @@ export async function instagramCallback(req: Request, res: Response) {
     const userData = await userResponse.json();
     console.log(`Retrieved user data for: ${userData.name || 'Unknown user'}`);
     
-    // Create a platform record for Instagram
-    console.log("Creating Instagram platform record in database");
-    const platform = await storage.createPlatform({
-      userId,
-      name: "instagram",
-      displayName: `Instagram (${userData.name || 'Business Account'})`,
-      accessToken,
-      refreshToken: null,
-      tokenExpiry: tokenData.expires_in 
-        ? new Date(Date.now() + tokenData.expires_in * 1000) 
-        : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days default
-      isConnected: true
-    });
+    // Check for Instagram business account in the user data
+    const hasInstagramAccount = !!userData.instagram_business_account;
+    console.log(`User has Instagram business account: ${hasInstagramAccount}`);
     
-    console.log(`Instagram platform created with ID: ${platform.id}`);
+    // Get existing Instagram platforms for this user
+    const existingPlatforms = await findInstagramPlatforms(userId);
     
-    // Redirect back to the settings page with success parameter
-    res.redirect('/settings?ig_connected=true');
+    let platform;
+    if (existingPlatforms.length > 0) {
+      // Update the existing platform
+      platform = existingPlatforms[0];
+      console.log(`Updating existing Instagram platform ID: ${platform.id}`);
+      platform = await storage.updatePlatform(platform.id, {
+        displayName: `Instagram (${userData.name || 'Business Account'})`,
+        accessToken,
+        refreshToken: null,
+        tokenExpiry,
+        isConnected: true
+      });
+    } else {
+      // Create a new platform record for Instagram
+      console.log(`Creating new Instagram platform for user: ${userId}`);
+      platform = await storage.createPlatform({
+        userId,
+        name: "instagram",
+        displayName: `Instagram (${userData.name || 'Business Account'})`,
+        accessToken,
+        refreshToken: null,
+        tokenExpiry,
+        isConnected: true
+      });
+    }
+    
+    console.log(`Instagram platform created/updated with ID: ${platform.id}`);
+    
+    // Redirect back to the settings page with success parameter and connection details
+    console.log("Instagram connection successful, redirecting to settings");
+    res.redirect(`/app/settings?platform=instagram&status=connected&user=${encodeURIComponent(userData.name || 'Business Account')}`);
   } catch (error) {
     console.error("Error handling Instagram OAuth callback:", error);
-    res.redirect('/settings?ig_error=true&error_reason=server_error');
+    res.redirect('/app/settings?platform=instagram&status=error&error_reason=server_error');
   }
 }
 
