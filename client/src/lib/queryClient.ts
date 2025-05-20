@@ -120,8 +120,11 @@ export const getQueryFn: <T>(options: {
         // If it's not HTML but might be JSON, try to parse it
         try {
           return JSON.parse(text);
-        } catch (jsonParseError) {
-          console.warn(`Failed to parse response as JSON: ${jsonParseError.message}`);
+        } catch (error) {
+          // Safely handle the error
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.warn(`Failed to parse response as JSON: ${errorMessage}`);
+          console.debug('Response text:', text.substring(0, 200));
           return null;
         }
       } catch (error) {

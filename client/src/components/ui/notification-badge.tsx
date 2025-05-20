@@ -27,12 +27,14 @@ type Notification = {
 };
 
 export function NotificationBadge() {
-  const { data: notifications = [], refetch } = useQuery<Notification[]>({
+  const { data: notifications, refetch } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     retry: false
   });
   
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Make sure notifications is an array before using filter
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter(n => !n.read).length;
   
   const markAsRead = async (id: string) => {
     try {
@@ -60,13 +62,13 @@ export function NotificationBadge() {
       <PopoverContent className="w-80 max-h-96 overflow-y-auto p-0">
         <div className="p-4 font-medium">Notifications</div>
         <Separator />
-        {notifications.length === 0 ? (
+        {safeNotifications.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground text-center">
             No notifications
           </div>
         ) : (
           <div className="divide-y">
-            {notifications.map((notification) => (
+            {safeNotifications.map((notification) => (
               <div 
                 key={notification.id} 
                 className={cn(
