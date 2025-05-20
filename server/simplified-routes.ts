@@ -56,6 +56,7 @@ import {
   hubspotCallback,
   getHubSpotContacts,
   createHubSpotContact,
+  disconnectHubSpot,
   isHubSpotConfigured,
   getHubSpotStatus
 } from "./platforms/hubspot";
@@ -949,97 +950,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HubSpot platform routes
   app.get("/api/platforms/hubspot/status", getHubSpotStatus);
   
-  app.get("/api/platforms/hubspot/connect", async (req, res) => {
-    try {
-      // Get user ID - for demo, always use "1" 
-      const userId = "1";
-      
-      // Check if we already have a connected HubSpot platform
-      const userPlatforms = await storage.getPlatformsByUserId(userId);
-      const existingHubSpotPlatforms = userPlatforms.filter(p => 
-        p.name.toLowerCase() === "hubspot" && p.isConnected
-      );
-      
-      // Disconnect existing HubSpot platforms first
-      for (const platform of existingHubSpotPlatforms) {
-        await storage.updatePlatform(platform.id, {
-          isConnected: false,
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null
-        });
-        console.log(`Disconnected existing HubSpot platform ID: ${platform.id}`);
-      }
-      
-      // Create new HubSpot connection
-      const newPlatform = await storage.createPlatform({
-        userId,
-        name: "hubspot",
-        displayName: "HubSpot CRM",
-        accessToken: "hubspot-token-" + Date.now(),
-        refreshToken: "hubspot-refresh-token",
-        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        isConnected: true
-      });
-      
-      console.log(`Created new HubSpot connection with ID: ${newPlatform.id}`);
-      
-      try {
-        // Redirect to settings page with success parameter
-        return res.redirect('/app/settings?tab=platforms&hubspot_connected=true');
-      } catch (redirectError) {
-        // If redirect fails, return success JSON
-        console.log("Redirect failed, returning JSON response");
-        return res.status(200).json({
-          success: true,
-          message: "HubSpot connected successfully",
-          redirectTo: '/app/settings?tab=platforms&hubspot_connected=true'
-        });
-      }
-    } catch (error) {
-      console.error("Error connecting to HubSpot:", error);
-      return res.status(500).json({ message: "Failed to connect to HubSpot" });
-    }
-  });
+  // OAuth 2.0 connection to HubSpot
+  app.get("/api/platforms/hubspot/connect", connectHubSpot);
   
-  app.post("/api/platforms/hubspot/disconnect", async (req, res) => {
-    try {
-      const userId = "1"; // Demo user ID
-      
-      // Find all HubSpot platforms to disconnect
-      const platforms = await storage.getPlatformsByUserId(userId);
-      const hubspotPlatforms = platforms.filter(p => 
-        p.name.toLowerCase() === "hubspot" && p.isConnected
-      );
-      
-      if (hubspotPlatforms.length === 0) {
-        return res.status(404).json({ message: "No connected HubSpot platform found" });
-      }
-      
-      // Disconnect all matching platforms
-      for (const platform of hubspotPlatforms) {
-        await storage.updatePlatform(platform.id, {
-          isConnected: false,
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null
-        });
-        console.log(`Disconnected HubSpot platform ID: ${platform.id}`);
-      }
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "HubSpot has been disconnected successfully" 
-      });
-    } catch (error) {
-      console.error("Error disconnecting HubSpot:", error);
-      return res.status(500).json({ message: "Failed to disconnect HubSpot" });
-    }
-  });
-  
+  // OAuth callback handler
   app.get("/api/platforms/hubspot/callback", hubspotCallback);
-  app.get("/api/platforms/hubspot/contacts", getHubSpotContacts);
-  app.post("/api/platforms/hubspot/contacts", createHubSpotContact);
+  
+  // Disconnect from HubSpot
+  app.post("/api/platforms/hubspot/disconnect", disconnectHubSpot);
+  
+  // HubSpot data endpoints
+  app.get("/api/platforms/:platformId/hubspot/contacts", getHubSpotContacts);
+  app.post("/api/platforms/:platformId/hubspot/contacts", createHubSpotContact);
   
   // Salesforce platform routes
   app.get("/api/platforms/salesforce/status", getSalesforceStatus);
