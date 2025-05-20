@@ -432,10 +432,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/platforms/:platformId/facebook/messages", async (req, res) => {
+  app.get("/api/platforms/:platformId/facebook/messages", checkAuth, async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const platform = await storage.getPlatformById(platformId);
+      
+      // Verify the platform belongs to the authenticated user
+      if (platform && userId && platform.userId !== userId) {
+        return res.status(403).json({ error: "You don't have permission to access this platform's messages" });
+      }
       
       if (!platform) {
         return res.status(404).json({ error: "Platform not found" });
@@ -516,10 +525,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/platforms/:platformId/instagram/messages", async (req, res) => {
+  app.get("/api/platforms/:platformId/instagram/messages", checkAuth, async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const platform = await storage.getPlatformById(platformId);
+      
+      // Verify the platform belongs to the authenticated user
+      if (platform && userId && platform.userId !== userId) {
+        return res.status(403).json({ error: "You don't have permission to access this platform's messages" });
+      }
       
       if (!platform) {
         return res.status(404).json({ error: "Platform not found" });
@@ -600,10 +618,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/platforms/:platformId/whatsapp/messages", async (req, res) => {
+  app.get("/api/platforms/:platformId/whatsapp/messages", checkAuth, async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const platform = await storage.getPlatformById(platformId);
+      
+      // Verify the platform belongs to the authenticated user
+      if (platform && userId && platform.userId !== userId) {
+        return res.status(403).json({ error: "You don't have permission to access this platform's messages" });
+      }
       
       if (!platform) {
         return res.status(404).json({ error: "Platform not found" });
@@ -708,9 +735,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add disconnect route for Slack
   app.post("/api/platforms/slack/disconnect", disconnectSlack);
   
-  app.get("/api/platforms/:platformId/slack/messages", async (req, res) => {
+  app.get("/api/platforms/:platformId/slack/messages", checkAuth, async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
       const platform = await storage.getPlatformById(platformId);
       
       if (!platform) {
