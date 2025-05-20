@@ -7,6 +7,8 @@
  * to improve query performance across the application.
  */
 
+import { execSync } from 'child_process';
+
 console.log('Starting Dana AI Platform database optimization process...');
 
 try {
@@ -15,9 +17,6 @@ try {
   // Execute the database optimization script
   console.log('Applying database performance optimizations...');
   console.log('This may take a moment depending on your database size.');
-  
-  // Use the require-child_process approach to run the TypeScript file
-  const { execSync } = require('child_process');
   
   try {
     // Execute the TypeScript script using tsx (safe for production environments)
