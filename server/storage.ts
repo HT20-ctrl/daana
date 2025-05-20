@@ -144,8 +144,8 @@ export class MemStorage implements IStorage {
       name: "slack",
       displayName: "Slack",
       userId: "1",
-      isConnected: true,
-      accessToken: "sample-token-slack",
+      isConnected: false, // Set to false by default to allow proper connection
+      accessToken: null,
       refreshToken: null,
       tokenExpiry: null,
       createdAt: new Date(),
