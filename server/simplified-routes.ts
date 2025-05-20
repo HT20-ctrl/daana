@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { extractTextFromFiles } from "./ai";
-import { checkAuth } from "./auth";
+// Security imports handled below
 import { 
   connectFacebook, 
   facebookCallback, 
@@ -335,9 +335,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics API
-  app.get("/api/analytics", async (req, res) => {
+  app.get("/api/analytics", checkAuth, async (req, res) => {
     try {
-      const userId = "1"; // Demo user ID
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub || "1"; // Use authenticated user ID
       const analytics = await storage.getAnalyticsByUserId(userId);
       res.json(analytics);
     } catch (error) {
