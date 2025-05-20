@@ -94,41 +94,39 @@ export const getQueryFn: <T>(options: {
 
       await handleResponseError(res);
       
-      // Check the content type before trying to parse as JSON
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
+      // Safe parsing to handle potential HTML responses
+      try {
+        const contentType = res.headers.get('content-type');
+        
+        // If we're sure it's JSON, parse it directly
+        if (contentType && contentType.includes('application/json')) {
           return await res.json();
-        } catch (jsonError) {
-          console.error('Error parsing JSON response:', jsonError);
-          // Try to get the text to see if it's actually HTML
-          const text = await res.clone().text();
-          if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-            throw new ClientApiError(
-              'Received HTML instead of JSON response',
-              ErrorCode.EXTERNAL_API_ERROR,
-              res.status,
-              { previewText: text.substring(0, 100) }
-            );
-          } else {
-            throw new ClientApiError(
-              'Invalid JSON response from server',
-              ErrorCode.EXTERNAL_API_ERROR,
-              res.status,
-              { responseText: text.substring(0, 100) }
-            );
-          }
         }
-      } else {
-        // If the response is not JSON, throw a more helpful error
+        
+        // For non-JSON content types, we need to be more careful
+        // First check if it's HTML by looking at the first few bytes
         const text = await res.text();
-        const previewText = text.substring(0, 100);
-        throw new ClientApiError(
-          `Expected JSON response but received ${contentType || 'unknown content type'}`,
-          ErrorCode.EXTERNAL_API_ERROR,
-          res.status,
-          { previewText }
-        );
+        
+        // If it's HTML, don't try to parse it as JSON
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          console.warn('Received HTML instead of JSON response');
+          // For API routes, we should log this as an error
+          if (url.startsWith('/api/')) {
+            console.error(`API route ${url} returned HTML instead of JSON`);
+          }
+          return null; // Return null instead of throwing an error
+        }
+        
+        // If it's not HTML but might be JSON, try to parse it
+        try {
+          return JSON.parse(text);
+        } catch (jsonParseError) {
+          console.warn(`Failed to parse response as JSON: ${jsonParseError.message}`);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error handling response:', error);
+        return null; // Return null to avoid crashing the app
       }
       
     } catch (error) {

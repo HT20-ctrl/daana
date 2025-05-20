@@ -5,10 +5,6 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     retry: false,
-    // Use a proper error handler to prevent "unexpected token doctype" errors
-    onError: (err) => {
-      console.error("Authentication error:", err);
-    },
   });
 
   return {

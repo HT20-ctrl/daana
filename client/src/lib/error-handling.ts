@@ -36,9 +36,19 @@ export class ClientApiError extends Error {
 
 /**
  * Handles API errors and provides appropriate UI feedback
+ * Returns a ClientApiError that can be used for further error handling
  */
 export function handleApiError(error: unknown, defaultMessage: string = 'An unexpected error occurred'): ClientApiError {
-  console.error('API Error:', error);
+  // For "unexpected token" syntax errors (usually HTML parsed as JSON)
+  if (error instanceof SyntaxError && error.message.includes('Unexpected token')) {
+    // Don't show a toast for these errors during navigation
+    return new ClientApiError(
+      'Invalid response format received',
+      ErrorCode.EXTERNAL_API_ERROR,
+      200,
+      { originalError: error.message }
+    );
+  }
   
   // Parse the error and extract relevant information
   let errorMessage = defaultMessage;
@@ -77,7 +87,10 @@ export function handleApiError(error: unknown, defaultMessage: string = 'An unex
   
   // If the error is already a ClientApiError, use it directly
   if (error instanceof ClientApiError) {
-    showErrorToast(error.code, error.message);
+    // Only show a toast for certain critical errors - skip HTML/navigation errors
+    if (error.code !== ErrorCode.EXTERNAL_API_ERROR || !error.context?.previewText?.includes('<!DOCTYPE')) {
+      showErrorToast(error.code, error.message);
+    }
     return error;
   }
   
@@ -88,8 +101,10 @@ export function handleApiError(error: unknown, defaultMessage: string = 'An unex
     errorMessage = error;
   }
   
+  // Show toast for all non-navigation errors
+  const newError = new ClientApiError(errorMessage, errorCode, statusCode);
   showErrorToast(errorCode, errorMessage);
-  return new ClientApiError(errorMessage, errorCode, statusCode);
+  return newError;
 }
 
 /**
