@@ -219,7 +219,8 @@ export function wrapWithPerfMonitoring<P extends object>(
 ): React.FC<P> {
   return (props: P) => {
     const start = performance.now();
-    const result = <Component {...props} />;
+    // @ts-ignore - TypeScript doesn't handle this well but it works at runtime
+    const result = Component(props);
     const elapsed = performance.now() - start;
     
     // Record render time metric

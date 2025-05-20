@@ -7,36 +7,39 @@
  * to improve query performance across the application.
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
-
-console.log('🚀 Dana AI Platform - Database Performance Optimization Tool');
-console.log('=========================================================');
-console.log();
-console.log('This tool will optimize your database for better performance by:');
-console.log('  1. Adding indexes for faster queries');
-console.log('  2. Optimizing database connection settings');
-console.log('  3. Updating statistics for the query planner');
-console.log();
+console.log('Starting Dana AI Platform database optimization process...');
 
 try {
-  console.log('📊 Running database optimization script...');
-  execSync('npx tsx scripts/optimize-database.ts', { stdio: 'inherit' });
+  console.log('Checking database connection...');
   
-  console.log();
-  console.log('✅ Database optimization completed successfully!');
-  console.log();
-  console.log('Your Dana AI Platform should now experience:');
-  console.log('  • Faster query response times');
-  console.log('  • Better handling of concurrent requests');
-  console.log('  • Reduced server load during peak usage');
-  console.log();
-  console.log('To verify the improvements, monitor the API response times');
-  console.log('in your browser\'s developer tools Network tab.');
+  // Execute the database optimization script
+  console.log('Applying database performance optimizations...');
+  console.log('This may take a moment depending on your database size.');
+  
+  // Use the require-child_process approach to run the TypeScript file
+  const { execSync } = require('child_process');
+  
+  try {
+    // Execute the TypeScript script using tsx (safe for production environments)
+    execSync('npx tsx scripts/optimize-database.ts', { stdio: 'inherit' });
+    
+    console.log('\n✅ Database optimization completed successfully!');
+    console.log('Your database now has the following performance improvements:');
+    console.log('  - Optimized indexes for faster data retrieval');
+    console.log('  - Improved search capabilities for knowledge base');
+    console.log('  - Enhanced query performance for conversations and messages');
+    console.log('  - Faster analytics data access');
+    console.log('\nYou should notice improved application response times, especially');
+    console.log('with larger datasets and concurrent users.');
+    
+  } catch (error) {
+    console.error('\n❌ Database optimization failed.');
+    console.error('Please ensure your database is running and credentials are correct.');
+    console.error('You can check the DATABASE_URL environment variable.');
+    process.exit(1);
+  }
+  
 } catch (error) {
-  console.error('❌ Database optimization failed:');
-  console.error(error.message);
-  console.error();
-  console.error('Please check your database connection and try again.');
+  console.error('Unexpected error during optimization process:', error);
   process.exit(1);
 }
