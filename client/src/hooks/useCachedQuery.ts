@@ -41,6 +41,9 @@ export function useCachedQuery<T>({
     console.error(`Query error (${queryKeyString}):`, error);
   };
   
+  // Create a merged options object without the onError property
+  const { onError, ...restOptions } = options;
+  
   // Return the enhanced query
   return useQuery<T, Error, T, QueryKey>({
     queryKey,
@@ -88,11 +91,13 @@ export function useCachedQuery<T>({
     retry: 1,                         // Only retry once to avoid overwhelming server
     retryDelay: 1000,                 // Wait 1 second between retries
     
-    // Error handling
-    onError: options.onError || defaultOnError,
-    
     // Pass through other options
-    ...options,
+    ...restOptions,
+  }, {
+    // Provide the error handler through the context API rather than options
+    context: {
+      onError: onError || defaultOnError,
+    }
   });
 }
 
@@ -131,7 +136,6 @@ export function prefetchQuery<T>({
         return await response.json();
       });
     },
-    ...options,
-    prefetch: true,
+    ...options
   });
 }
