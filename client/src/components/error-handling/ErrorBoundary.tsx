@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { logErrorToService } from '@/lib/error-handling';
+import { AlertCircle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -56,6 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="p-6 max-w-md mx-auto">
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
             <AlertTitle>Something went wrong</AlertTitle>
             <AlertDescription>
               {this.state.error?.message || 'An unexpected error occurred'}

@@ -53,32 +53,23 @@ export function handleApiError(error: unknown, defaultMessage: string = 'An unex
       const response = error as Response;
       statusCode = response.status;
       
-      // Attempt to parse the error JSON
-      return response.json()
-        .then((data: ApiErrorResponse) => {
-          errorMessage = data.message || defaultMessage;
-          errorCode = data.code || ErrorCode.INTERNAL_SERVER_ERROR;
-          errorContext = data.context;
-          
-          // Display appropriate toast notification based on error type
-          showErrorToast(errorCode, errorMessage);
-          
-          return new ClientApiError(errorMessage, errorCode, statusCode, errorContext);
-        })
-        .catch(() => {
-          // If JSON parsing fails, use response status text
-          errorMessage = response.statusText || defaultMessage;
-          
-          // Map HTTP status to error code
-          if (statusCode === 400) errorCode = ErrorCode.VALIDATION_ERROR;
-          else if (statusCode === 401) errorCode = ErrorCode.AUTHENTICATION_ERROR;
-          else if (statusCode === 403) errorCode = ErrorCode.AUTHORIZATION_ERROR;
-          else if (statusCode === 404) errorCode = ErrorCode.NOT_FOUND;
-          else if (statusCode === 429) errorCode = ErrorCode.RATE_LIMIT_ERROR;
-          
-          showErrorToast(errorCode, errorMessage);
-          return new ClientApiError(errorMessage, errorCode, statusCode);
-        });
+      // For synchronous handling (create a new error rather than returning a promise)
+      const errorObj = new ClientApiError(
+        response.statusText || defaultMessage,
+        statusCode === 400 ? ErrorCode.VALIDATION_ERROR :
+        statusCode === 401 ? ErrorCode.AUTHENTICATION_ERROR :
+        statusCode === 403 ? ErrorCode.AUTHORIZATION_ERROR :
+        statusCode === 404 ? ErrorCode.NOT_FOUND :
+        statusCode === 429 ? ErrorCode.RATE_LIMIT_ERROR :
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        statusCode
+      );
+      
+      // Display appropriate toast notification based on error type
+      showErrorToast(errorObj.code, errorObj.message);
+      
+      // Return the error immediately
+      return errorObj;
     } catch (e) {
       console.error('Error parsing API error:', e);
     }
@@ -156,10 +147,12 @@ function showErrorToast(errorCode: ErrorCode, message: string) {
  * Custom error boundary component for React
  * To be used with React's ErrorBoundary feature
  */
-export function logErrorToService(error: Error, componentStack: string) {
+export function logErrorToService(error: Error, componentStack: string = '') {
   // In a production app, we would send this to an error tracking service like Sentry
   console.error('Application Error:', error);
-  console.error('Component Stack:', componentStack);
+  if (componentStack) {
+    console.error('Component Stack:', componentStack);
+  }
   
   // For a real implementation, uncomment and configure Sentry:
   /*
