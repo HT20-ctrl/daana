@@ -141,12 +141,12 @@ export async function googleOAuthCallback(req: Request, res: Response) {
   
   if (!code) {
     console.error("No authorization code received from Google");
-    return res.redirect('/settings?email_error=true&reason=no_code');
+    return res.redirect('/app/settings?platform=email&status=error&error_reason=no_code');
   }
   
   try {
     // Get user ID from the session or use demo user
-    const userId = req.user?.claims?.sub || "1";
+    const userId = (req.user as any)?.claims?.sub || "1";
     
     // Check if using real Google OAuth or simulated
     if (isGoogleOAuthConfigured()) {
@@ -175,7 +175,7 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       
       if (!tokenResponse || !tokenResponse.access_token) {
         console.error("Failed to exchange code for tokens");
-        return res.redirect('/settings?email_error=true&reason=token_exchange_failed');
+        return res.redirect('/app/settings?platform=email&status=error&error_reason=token_exchange_failed');
       }
       
       console.log("Successfully obtained access token from Google");
@@ -185,7 +185,7 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       
       if (!userInfo || !userInfo.email) {
         console.error("Failed to fetch user info from Google");
-        return res.redirect('/settings?email_error=true&reason=userinfo_failed');
+        return res.redirect('/app/settings?platform=email&status=error&error_reason=userinfo_failed');
       }
       
       // 3. Save the tokens and user info
@@ -226,7 +226,7 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       }
       
       // Redirect back to settings page with success parameter
-      return res.redirect('/settings?email_connected=true');
+      return res.redirect(`/app/settings?platform=email&status=connected&provider=gmail&email=${encodeURIComponent(userInfo.email)}`);
     } else {
       // Simulated flow (when no real credentials are available)
       console.log("Using simulated Google OAuth flow");
@@ -263,11 +263,15 @@ export async function googleOAuthCallback(req: Request, res: Response) {
       }
       
       // Redirect back to the settings page with success parameter
-      return res.redirect(`/settings?email_connected=true&simulated=true`);
+      return res.redirect(`/app/settings?platform=email&status=connected&provider=gmail&simulated=true`);
     }
   } catch (error) {
     console.error("Error in Google OAuth callback:", error);
-    return res.redirect(`/settings?email_error=true&reason=internal_error`);
+    let errorMessage = "internal_error";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return res.redirect(`/app/settings?platform=email&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
   }
 }
 
@@ -481,7 +485,7 @@ async function sendEmailViaGmail(accessToken: string, to: string, subject: strin
     oauth2Client.setCredentials(credentials);
     
     // Add token refresh handler
-    oauth2Client.on('tokens', async (tokens) => {
+    oauth2Client.on('tokens', async (tokens: any) => {
       console.log('Token refresh occurred');
       if (tokens.access_token && emailPlatform) {
         console.log('Updating stored access token');
