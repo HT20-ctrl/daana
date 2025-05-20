@@ -16,14 +16,15 @@ export async function getSlackStatus(req: Request, res: Response) {
 
     // If Slack is configured, also check if it's already connected for this user
     if (configured) {
-      const userId = req.user?.id || "1"; // Use demo user ID if not authenticated
+      const userId = (req.user as any)?.claims?.sub || "1"; // Use demo user ID if not authenticated
       const platforms = await storage.getPlatformsByUserId(userId);
       const slackPlatform = platforms.find(p => p.name === "slack");
       
       return res.json({ 
         configured: true, 
         connected: !!slackPlatform?.isConnected,
-        platformId: slackPlatform?.id
+        platformId: slackPlatform?.id,
+        displayName: slackPlatform?.displayName || "Slack"
       });
     }
     
@@ -34,28 +35,33 @@ export async function getSlackStatus(req: Request, res: Response) {
   }
 }
 
-// Connect to Slack API
+// Connect to Slack API using OAuth
 export async function connectSlack(req: Request, res: Response) {
-  if (!isSlackConfigured()) {
-    return res.status(400).json({ 
-      message: "Slack API credentials not configured. Please add SLACK_BOT_TOKEN and SLACK_CHANNEL_ID to your environment variables." 
-    });
-  }
-
   try {
-    // In a real implementation, we would use OAuth flow
-    // For this demo, we'll directly validate the bot token
+    if (!isSlackConfigured()) {
+      return res.status(400).json({ 
+        message: "Slack API credentials not configured. Please add SLACK_BOT_TOKEN and SLACK_CHANNEL_ID to your environment variables." 
+      });
+    }
+    
+    console.log("Starting Slack API connection");
+    
+    // Get user ID from the session or use demo user
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // We're using a bot token approach since it's already authenticated
+    // In a production app, this would use the full OAuth flow with client ID/secret
     const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
     
     // Test connection by getting info about the bot
+    console.log("Testing Slack connection with bot token");
     const botInfo = await slack.auth.test();
     
     if (!botInfo.ok) {
       throw new Error("Slack API token validation failed");
     }
-
-    // Get user ID from the session or use demo user
-    const userId = req.user?.id || "1";
+    
+    console.log(`Successfully connected to Slack workspace: ${botInfo.team}`);
     
     // Check if this Slack account is already connected
     const platforms = await storage.getPlatformsByUserId(userId);
@@ -63,6 +69,7 @@ export async function connectSlack(req: Request, res: Response) {
     
     if (existingSlack) {
       // Update existing platform connection
+      console.log(`Updating existing Slack platform ID: ${existingSlack.id}`);
       await storage.updatePlatform(existingSlack.id, {
         displayName: `Slack (${botInfo.team})`,
         accessToken: process.env.SLACK_BOT_TOKEN as string,
@@ -70,6 +77,7 @@ export async function connectSlack(req: Request, res: Response) {
       });
     } else {
       // Create new Slack platform in database
+      console.log("Creating new Slack platform connection");
       await storage.createPlatform({
         name: "slack",
         displayName: `Slack (${botInfo.team})`,
@@ -82,10 +90,15 @@ export async function connectSlack(req: Request, res: Response) {
     }
     
     // Redirect back to the settings page with success parameter
-    res.redirect(`/settings?slack_connected=true`);
+    console.log("Slack connection successful, redirecting to settings");
+    res.redirect(`/app/settings?platform=slack&status=connected&workspace=${encodeURIComponent(botInfo.team as string)}`);
   } catch (error) {
     console.error("Error connecting to Slack:", error);
-    res.status(500).json({ message: "Failed to connect to Slack" });
+    let errorMessage = "Failed to connect to Slack";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.redirect(`/app/settings?platform=slack&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
   }
 }
 
@@ -98,31 +111,95 @@ export async function getSlackMessages(req: Request, res: Response) {
   }
 
   try {
-    // Initialize Slack client
-    const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+    // Get platform ID from the request
+    const platformId = req.params.platformId ? parseInt(req.params.platformId) : undefined;
+    
+    // Get user ID from the request for security checks
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // If platform ID is provided, verify it belongs to this user
+    let accessToken = process.env.SLACK_BOT_TOKEN;
+    
+    if (platformId) {
+      const platform = await storage.getPlatformById(platformId);
+      if (!platform) {
+        return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      if (platform.userId !== userId) {
+        return res.status(403).json({ message: "Access denied to this platform" });
+      }
+      
+      if (platform.name !== "slack") {
+        return res.status(400).json({ message: "Invalid platform type" });
+      }
+      
+      // Use the stored token if available
+      if (platform.accessToken) {
+        accessToken = platform.accessToken;
+      }
+    }
+    
+    // Initialize Slack client with the appropriate token
+    const slack = new WebClient(accessToken);
+    
+    console.log("Fetching messages from Slack channel");
     
     // Get messages from the configured channel
     const result = await slack.conversations.history({
-      channel: process.env.SLACK_CHANNEL_ID,
-      limit: 10
+      channel: process.env.SLACK_CHANNEL_ID!,
+      limit: 15 // Fetch slightly more messages
     });
     
     if (!result.ok) {
       throw new Error("Failed to fetch messages from Slack");
     }
     
-    // Transform Slack messages to our format
-    const messages = result.messages?.map((msg: any) => {
+    // Get user information to display real names
+    const userCache: Record<string, any> = {};
+    
+    // Create a helper for getting user info (with caching)
+    const getUserInfo = async (slackUserId: string) => {
+      if (userCache[slackUserId]) return userCache[slackUserId];
+      
+      try {
+        const userResult = await slack.users.info({ user: slackUserId });
+        if (userResult.ok && userResult.user) {
+          userCache[slackUserId] = userResult.user;
+          return userResult.user;
+        }
+      } catch (error) {
+        console.warn(`Could not fetch info for user ${slackUserId}:`, error);
+      }
+      
+      return null;
+    };
+    
+    // Transform Slack messages to our format (with async/await for user resolution)
+    const messagesPromises = result.messages?.map(async (msg: any) => {
+      let senderName = msg.user || "Unknown User";
+      
+      // Try to get the real user name
+      if (msg.user) {
+        const userInfo = await getUserInfo(msg.user);
+        if (userInfo) {
+          senderName = userInfo.real_name || userInfo.name || senderName;
+        }
+      }
+      
       return {
         id: msg.ts,
         senderId: msg.user,
-        senderName: msg.user, // In a real implementation, you would resolve user names
+        senderName: senderName,
         content: msg.text,
         timestamp: new Date(parseInt(msg.ts.split('.')[0]) * 1000),
         isRead: true
       };
     }) || [];
     
+    const messages = await Promise.all(messagesPromises);
+    
+    console.log(`Retrieved ${messages.length} messages from Slack`);
     res.json(messages);
   } catch (error) {
     console.error("Error getting Slack messages:", error);
@@ -131,11 +208,60 @@ export async function getSlackMessages(req: Request, res: Response) {
 }
 
 // Send Slack message
+// Disconnect from Slack
+export async function disconnectSlack(req: Request, res: Response) {
+  try {
+    // Get user ID from the request
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // Find the user's connected Slack platforms
+    const platforms = await storage.getPlatformsByUserId(userId);
+    const slackPlatforms = platforms.filter(p => p.name === "slack" && p.isConnected);
+    
+    if (slackPlatforms.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "No connected Slack platform found" 
+      });
+    }
+    
+    // Disconnect all found Slack platforms
+    for (const platform of slackPlatforms) {
+      console.log(`Disconnecting Slack platform ID: ${platform.id}`);
+      await storage.updatePlatform(platform.id, {
+        isConnected: false,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null
+      });
+    }
+    
+    console.log(`Successfully disconnected ${slackPlatforms.length} Slack platforms for user ${userId}`);
+    
+    // Redirect back to settings page with success parameter
+    res.json({
+      success: true,
+      message: "Slack has been disconnected successfully"
+    });
+  } catch (error) {
+    console.error("Error disconnecting from Slack:", error);
+    let errorMessage = "Failed to disconnect from Slack";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ 
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
+// Send Slack message
 export async function sendSlackMessage(req: Request, res: Response) {
-  const { message } = req.body;
+  const { message, blocks } = req.body;
   
-  if (!message) {
-    return res.status(400).json({ message: "Message text is required" });
+  if (!message && !blocks) {
+    return res.status(400).json({ message: "Message text or blocks are required" });
   }
   
   if (!isSlackConfigured()) {
@@ -145,26 +271,91 @@ export async function sendSlackMessage(req: Request, res: Response) {
   }
   
   try {
-    // Initialize Slack client
-    const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+    // Get platform ID from the request
+    const platformId = req.params.platformId ? parseInt(req.params.platformId) : undefined;
+    
+    // Get user ID from the request for security checks
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // If platform ID is provided, verify it belongs to this user
+    let accessToken = process.env.SLACK_BOT_TOKEN;
+    
+    if (platformId) {
+      const platform = await storage.getPlatformById(platformId);
+      if (!platform) {
+        return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      if (platform.userId !== userId) {
+        return res.status(403).json({ message: "Access denied to this platform" });
+      }
+      
+      if (platform.name !== "slack") {
+        return res.status(400).json({ message: "Invalid platform type" });
+      }
+      
+      // Use the stored token if available
+      if (platform.accessToken) {
+        accessToken = platform.accessToken;
+      }
+    }
+    
+    // Initialize Slack client with the appropriate token
+    const slack = new WebClient(accessToken);
+    
+    console.log("Sending message to Slack channel");
+    
+    // Build the message payload
+    const messagePayload: any = {
+      channel: process.env.SLACK_CHANNEL_ID!,
+      text: message || "Message from Dana AI"
+    };
+    
+    // Add blocks if provided
+    if (blocks) {
+      messagePayload.blocks = blocks;
+    }
+    
+    // Support for thread replies (if thread_ts is provided)
+    if (req.body.thread_ts) {
+      messagePayload.thread_ts = req.body.thread_ts;
+    }
     
     // Send a message to the configured channel
-    const result = await slack.chat.postMessage({
-      channel: process.env.SLACK_CHANNEL_ID!,
-      text: message
-    });
+    const result = await slack.chat.postMessage(messagePayload);
     
     if (!result.ok) {
       throw new Error("Failed to send message to Slack");
     }
     
+    console.log("Successfully sent message to Slack");
+    
+    // Update analytics for this user (increment messages sent)
+    try {
+      await storage.incrementTotalMessages(userId);
+    } catch (analyticError) {
+      console.warn("Failed to update analytics:", analyticError);
+    }
+    
     res.json({ 
       success: true, 
       message: "Message sent successfully",
-      messageId: result.ts
+      messageId: result.ts,
+      threadTs: (result as any).thread_ts || result.ts,
+      channel: result.channel
     });
   } catch (error) {
     console.error("Error sending Slack message:", error);
-    res.status(500).json({ message: "Failed to send Slack message" });
+    if (error instanceof Error) {
+      res.status(500).json({ 
+        success: false,
+        message: `Failed to send Slack message: ${error.message}`
+      });
+    } else {
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to send Slack message" 
+      });
+    }
   }
 }
