@@ -101,10 +101,14 @@ function performanceMonitor(req: Request, res: Response, next: NextFunction) {
 
 // Basic health check endpoint
 function healthCheck(req: Request, res: Response) {
-  res.status(200).json({
+  const statusData = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-  });
+    version: process.env.npm_package_version || '1.0.0',
+    uptime: `${Math.floor(process.uptime())} seconds`,
+  };
+  
+  res.status(200).json(statusData);
 }
 
 // Detailed system status (can be protected by auth middleware in production)
