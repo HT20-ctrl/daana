@@ -15,19 +15,19 @@ import Header from "@/components/layout/Header";
 // Loading component for lazy loading
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Lazy-loaded pages for code splitting
-const Dashboard = lazy(() => import("@/pages/dashboard"));
-const Conversations = lazy(() => import("@/pages/conversations"));
-const KnowledgeBase = lazy(() => import("@/pages/knowledge-base"));
-const AiResponses = lazy(() => import("@/pages/ai-responses"));
-const Analytics = lazy(() => import("@/pages/analytics"));
-const Settings = lazy(() => import("@/pages/settings"));
-const Search = lazy(() => import("@/pages/search"));
-const NotFound = lazy(() => import("@/pages/not-found"));
-const GoogleAuthPage = lazy(() => import("@/pages/google-auth"));
-const LandingPage = lazy(() => import("@/pages/landing"));
-const SignInPage = lazy(() => import("@/pages/signin"));
-const ConversationDetail = lazy(() => import("@/pages/conversation-detail"));
+// Use regular imports instead of lazy loading for now
+import Dashboard from "@/pages/dashboard";
+import Conversations from "@/pages/conversations";
+import KnowledgeBase from "@/pages/knowledge-base";
+import AiResponses from "@/pages/ai-responses";
+import Analytics from "@/pages/analytics";
+import Settings from "@/pages/settings";
+import Search from "@/pages/search";
+import NotFound from "@/pages/not-found";
+import GoogleAuthPage from "@/pages/google-auth";
+import LandingPage from "@/pages/landing";
+import SignInPage from "@/pages/signin";
+import ConversationDetail from "@/pages/conversation-detail";
 
 // Auth loading screen
 function LoadingScreen() {
