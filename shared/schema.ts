@@ -46,6 +46,7 @@ export const platforms = pgTable("platforms", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   tokenExpiry: timestamp("token_expiry"),
+  metadata: jsonb("metadata"), // Store platform-specific metadata (instance URLs, org IDs, etc.)
   isConnected: boolean("is_connected").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
