@@ -82,7 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Simple auth route that returns a demo user
+  // Simple auth route that returns a demo user - no auth needed for this endpoint
   app.get('/api/auth/user', async (req, res) => {
     try {
       // For development, return a demo user
@@ -104,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platforms API
-  app.get("/api/platforms", checkAuth, async (req, res) => {
+  app.get("/api/platforms", async (req, res) => {
     try {
       // Get user ID from authenticated session
       const user = req.user as any;
@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations API
-  app.get("/api/conversations", checkAuth, async (req, res) => {
+  app.get("/api/conversations", async (req, res) => {
     try {
       // Get user ID from authenticated session
       const user = req.user as any;
@@ -413,10 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/platforms/facebook/callback", async (req, res) => {
-    // Setup session if it doesn't exist
-    if (!req.session) {
-      req.session = {};
-    }
+    // Processing the OAuth callback for Facebook
     
     try {
       if (isFacebookConfigured()) {
