@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { extractTextFromFiles } from "./ai";
+import { checkAuth } from "./auth";
 import { 
   connectFacebook, 
   facebookCallback, 
@@ -178,9 +179,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Disconnect platform endpoint
-  app.delete("/api/platforms/:platformId", async (req, res) => {
+  app.delete("/api/platforms/:platformId", checkAuth, async (req, res) => {
     try {
       const platformId = parseInt(req.params.platformId);
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
       console.log(`Attempting to disconnect platform with ID: ${platformId}`);
       
       const platform = await storage.getPlatformById(platformId);
@@ -188,6 +192,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!platform) {
         console.log(`Platform with ID ${platformId} not found`);
         return res.status(404).json({ error: "Platform not found" });
+      }
+      
+      // Verify the platform belongs to the authenticated user
+      if (userId && platform.userId !== userId) {
+        console.log(`Unauthorized access attempt: User ${userId} trying to disconnect platform belonging to ${platform.userId}`);
+        return res.status(403).json({ error: "You don't have permission to disconnect this platform" });
       }
       
       console.log(`Disconnecting platform: ${platform.name} (ID: ${platformId})`);
@@ -219,9 +229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations API
-  app.get("/api/conversations", async (req, res) => {
+  app.get("/api/conversations", checkAuth, async (req, res) => {
     try {
-      const userId = "1"; // Demo user ID
+      // Get user ID from authenticated session
+      const user = req.user as any;
+      const userId = user?.claims?.sub || "1"; // Use authenticated user ID
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
