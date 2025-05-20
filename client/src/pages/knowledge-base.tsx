@@ -196,7 +196,7 @@ export default function KnowledgeBasePage() {
               <span className="ml-1">Back to Dashboard</span>
             </a>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Knowledge Base</h1>
           <p className="text-gray-500 mt-1">Manage documents used by the AI to generate customer responses</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
