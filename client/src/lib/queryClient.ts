@@ -35,6 +35,22 @@ export async function apiRequest(
     });
 
     await handleResponseError(res);
+    
+    // Check if the response is HTML instead of expected API response
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      const text = await res.clone().text();
+      if (text.includes('<!DOCTYPE html>')) {
+        console.error('Received HTML response instead of API data');
+        throw new ClientApiError(
+          'Received HTML page instead of API response',
+          ErrorCode.EXTERNAL_API_ERROR,
+          res.status,
+          { url }
+        );
+      }
+    }
+    
     return res;
   } catch (error) {
     if (error instanceof Response || error instanceof ClientApiError) {
@@ -58,7 +74,21 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     try {
-      const res = await fetch(queryKey[0] as string, {
+      // Ensure we're fetching API routes, not page routes
+      const url = queryKey[0] as string;
+      
+      // Check if the URL is a page route instead of an API route
+      // This helps prevent the "unexpected token doctype" error
+      if (!url.startsWith('/api/') && !url.startsWith('http')) {
+        throw new ClientApiError(
+          `Invalid API request to non-API route: ${url}`,
+          ErrorCode.INTERNAL_SERVER_ERROR,
+          500,
+          { url }
+        );
+      }
+      
+      const res = await fetch(url, {
         credentials: "include",
       });
 
@@ -67,11 +97,56 @@ export const getQueryFn: <T>(options: {
       }
 
       await handleResponseError(res);
-      return await res.json();
+      
+      // Check the content type before trying to parse as JSON
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error('Error parsing JSON response:', jsonError);
+          // Try to get the text to see if it's actually HTML
+          const text = await res.clone().text();
+          if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+            throw new ClientApiError(
+              'Received HTML instead of JSON response',
+              ErrorCode.EXTERNAL_API_ERROR,
+              res.status,
+              { previewText: text.substring(0, 100) }
+            );
+          } else {
+            throw new ClientApiError(
+              'Invalid JSON response from server',
+              ErrorCode.EXTERNAL_API_ERROR,
+              res.status,
+              { responseText: text.substring(0, 100) }
+            );
+          }
+        }
+      } else {
+        // If the response is not JSON, throw a more helpful error
+        const text = await res.text();
+        const previewText = text.substring(0, 100);
+        throw new ClientApiError(
+          `Expected JSON response but received ${contentType || 'unknown content type'}`,
+          ErrorCode.EXTERNAL_API_ERROR,
+          res.status,
+          { previewText }
+        );
+      }
+      
     } catch (error) {
       // Use our error handling system to provide meaningful errors
-      handleApiError(error, `Failed to fetch data from ${queryKey[0]}`);
-      throw error; // Re-throw after handling
+      const errorInstance = handleApiError(error, `Failed to fetch data from ${queryKey[0]}`);
+      
+      // Log better information about the error for debugging
+      console.error(`API request to ${queryKey[0]} failed:`, {
+        error,
+        errorType: error?.constructor?.name,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      
+      throw errorInstance;
     }
   };
 
