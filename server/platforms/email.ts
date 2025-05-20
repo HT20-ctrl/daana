@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { storage } from "../storage";
 import sgMail from "@sendgrid/mail";
 import crypto from "crypto";
+import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 // Check if Email API credentials are configured
 export function isEmailConfigured(): boolean {
@@ -53,7 +55,7 @@ async function connectSendGrid(req: Request, res: Response) {
     // In a real implementation, this would verify the API key works
     
     // Get user ID from authenticated user
-    const userId = req.user?.claims?.sub || "demo";
+    const userId = (req.user as any)?.claims?.sub || "1";
     
     // Create Email platform in database
     await storage.createPlatform({
@@ -67,10 +69,14 @@ async function connectSendGrid(req: Request, res: Response) {
     });
     
     // Redirect back to the app with success parameter
-    res.redirect(`/settings?email_connected=true`);
+    res.redirect(`/app/settings?platform=email&status=connected&provider=sendgrid`);
   } catch (error) {
     console.error("Error connecting to Email:", error);
-    res.status(500).json({ message: "Failed to connect to Email" });
+    let errorMessage = "Failed to connect to Email";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.redirect(`/app/settings?platform=email&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
   }
 }
 
@@ -101,10 +107,11 @@ export async function googleOAuthRedirect(req: Request, res: Response) {
       redirectUri = 'https://dana-ai-project.replit.app/api/platforms/email/google/callback';
     }
     
-    // Using only the most basic scopes to minimize verification requirements
+    // Using Gmail API scope for sending emails
     const scopes = [
       'email',
-      'profile'
+      'profile',
+      'https://www.googleapis.com/auth/gmail.send'
     ];
     
     // Build the Google OAuth URL
@@ -387,14 +394,30 @@ export async function sendEmailMessage(req: Request, res: Response) {
     return res.status(400).json({ message: "Email recipient, subject, and message content are required" });
   }
   
-  if (!isEmailConfigured()) {
-    return res.status(400).json({ 
-      message: "Email API credentials not configured"
-    });
-  }
-  
   try {
-    if (process.env.SENDGRID_API_KEY) {
+    // Get user ID from the session or use demo user
+    const userId = (req.user as any)?.claims?.sub || "1";
+    
+    // Find the email platform for this user
+    const platforms = await storage.getPlatformsByUserId(userId);
+    const emailPlatform = platforms.find(p => p.name === "email");
+    
+    if (!emailPlatform || !emailPlatform.isConnected) {
+      return res.status(400).json({ 
+        message: "No connected email platform found. Please connect an email platform first."
+      });
+    }
+    
+    // Check which email service to use
+    if (emailPlatform.displayName.toLowerCase().includes("gmail")) {
+      // Send using Gmail API
+      if (!emailPlatform.accessToken) {
+        return res.status(400).json({ message: "Gmail access token not found" });
+      }
+      
+      const result = await sendEmailViaGmail(emailPlatform.accessToken, to, subject, message);
+      return res.json(result);
+    } else if (process.env.SENDGRID_API_KEY) {
       // Set up SendGrid
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
       
@@ -412,19 +435,114 @@ export async function sendEmailMessage(req: Request, res: Response) {
       
       res.json({ 
         success: true, 
-        message: "Email sent successfully" 
+        message: "Email sent successfully via SendGrid" 
       });
     } else {
-      // Mock sending when we don't have credentials
-      console.log(`[MOCK] Email would be sent to ${to} with subject: ${subject}`);
-      res.json({ 
-        success: true, 
-        message: "Email would be sent (mock mode)",
-        mock: true
+      return res.status(400).json({ 
+        message: "No configured email service available"
       });
     }
   } catch (error) {
     console.error("Error sending Email:", error);
-    res.status(500).json({ message: "Failed to send Email" });
+    if (error instanceof Error) {
+      res.status(500).json({ message: `Failed to send Email: ${error.message}` });
+    } else {
+      res.status(500).json({ message: "Failed to send Email" });
+    }
+  }
+}
+
+// Function to send an email via Gmail API
+async function sendEmailViaGmail(accessToken: string, to: string, subject: string, messageText: string): Promise<any> {
+  try {
+    // Get the user ID associated with this token (for token refresh)
+    const userId = "1"; // Default to demo user, would be retrieved from auth in production
+    
+    // Create OAuth2 client
+    const oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_OAUTH_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+      // Set redirect URI for token refresh
+      process.env.REPLIT_DOMAINS?.includes('replit.app')
+        ? 'https://dana-ai-project.replit.app/api/platforms/email/google/callback'
+        : 'http://localhost:5000/api/platforms/email/google/callback'
+    );
+    
+    // Find the email platform to check for a refresh token
+    const platforms = await storage.getPlatformsByUserId(userId);
+    const emailPlatform = platforms.find(p => p.name === "email" && p.displayName.toLowerCase().includes("gmail"));
+    
+    // Set credentials including refresh token if available
+    const credentials: any = { access_token: accessToken };
+    if (emailPlatform?.refreshToken) {
+      credentials.refresh_token = emailPlatform.refreshToken;
+    }
+    
+    oauth2Client.setCredentials(credentials);
+    
+    // Add token refresh handler
+    oauth2Client.on('tokens', async (tokens) => {
+      console.log('Token refresh occurred');
+      if (tokens.access_token && emailPlatform) {
+        console.log('Updating stored access token');
+        
+        // Calculate new expiry
+        const expiryDate = tokens.expiry_date 
+          ? new Date(tokens.expiry_date) 
+          : new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+        
+        // Update the stored token
+        await storage.updatePlatform(emailPlatform.id, {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token || emailPlatform.refreshToken,
+          tokenExpiry: expiryDate
+        });
+      }
+    });
+    
+    // Create Gmail API client
+    const gmail = google.gmail({
+      version: 'v1',
+      auth: oauth2Client
+    });
+    
+    // Construct email content in MIME format
+    const emailLines = [
+      `To: ${to}`,
+      'From: Dana AI <noreply@dana-ai.com>',
+      `Subject: ${subject}`,
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      messageText.replace(/\n/g, '<br>')
+    ];
+    
+    // Join with CRLF as per RFC 2822
+    const email = emailLines.join('\r\n');
+    
+    // Encode the email as base64url
+    const encodedEmail = Buffer.from(email)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    
+    // Send the message
+    const result = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedEmail
+      }
+    });
+    
+    console.log('Email sent successfully via Gmail API:', result.data);
+    
+    return {
+      success: true,
+      message: "Email sent successfully via Gmail",
+      messageId: result.data.id
+    };
+  } catch (error) {
+    console.error('Error sending email via Gmail API:', error);
+    throw error;
   }
 }
