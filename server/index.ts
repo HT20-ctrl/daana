@@ -4,6 +4,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { errorHandler, logger } from "./errorHandling";
+import { setupMonitoring } from "./monitoring";
 
 const app = express();
 
