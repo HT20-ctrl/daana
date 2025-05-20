@@ -36,6 +36,7 @@ import {
   connectSlack,
   getSlackMessages,
   sendSlackMessage,
+  disconnectSlack,
   isSlackConfigured,
   getSlackStatus
 } from "./platforms/slack";
@@ -627,6 +628,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/platforms/slack/connect", async (req, res) => {
+    // If Slack is configured with real tokens, use the proper integration
+    if (isSlackConfigured()) {
+      return connectSlack(req, res);
+    }
+    
     try {
       // Get user ID - for demo, always use "1"
       const userId = "1";
@@ -649,10 +655,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create new mock Slack connection for development
+      const workspaceName = "Demo Workspace";
       const newPlatform = await storage.createPlatform({
         userId,
         name: "slack",
-        displayName: "Slack Workspace (Demo User)",
+        displayName: `Slack (${workspaceName})`,
         accessToken: "mock-slack-token-" + Date.now(),
         refreshToken: null,
         tokenExpiry: null,
@@ -662,48 +669,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Created new Slack connection with ID: ${newPlatform.id}`);
       
       // Redirect to settings page with success parameter
-      return res.redirect('/app/settings?tab=platforms&slack_connected=true');
+      return res.redirect(`/app/settings?platform=slack&status=connected&workspace=${encodeURIComponent(workspaceName)}`);
     } catch (error) {
       console.error("Error connecting to Slack:", error);
-      return res.status(500).json({ message: "Failed to connect Slack" });
+      let errorMessage = "Failed to connect to Slack";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      return res.redirect(`/app/settings?platform=slack&status=error&error_reason=${encodeURIComponent(errorMessage)}`);
     }
   });
 
   // Add disconnect route for Slack
-  app.post("/api/platforms/slack/disconnect", async (req, res) => {
-    try {
-      const userId = "1"; // Demo user ID
-      
-      // Find all Slack platforms to disconnect
-      const platforms = await storage.getPlatformsByUserId(userId);
-      const slackPlatforms = platforms.filter(p => 
-        p.name.toLowerCase() === "slack" && p.isConnected
-      );
-      
-      if (slackPlatforms.length === 0) {
-        return res.status(404).json({ message: "No connected Slack platform found" });
-      }
-      
-      // Disconnect all matching platforms
-      for (const platform of slackPlatforms) {
-        await storage.updatePlatform(platform.id, {
-          isConnected: false,
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null
-        });
-        console.log(`Disconnected Slack platform ID: ${platform.id}`);
-      }
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "Slack has been disconnected successfully" 
-      });
-    } catch (error) {
-      console.error("Error disconnecting Slack:", error);
-      return res.status(500).json({ message: "Failed to disconnect Slack" });
-    }
-  });
+  app.post("/api/platforms/slack/disconnect", disconnectSlack);
   
   app.get("/api/platforms/:platformId/slack/messages", async (req, res) => {
     try {
