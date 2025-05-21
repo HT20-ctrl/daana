@@ -1326,8 +1326,17 @@ export class DatabaseStorage implements IStorage {
   // Analytics operations
   async getAnalyticsByUserId(userId: string): Promise<Analytics | undefined> {
     try {
+      // Explicitly specify columns to avoid missing column errors
       const [analyticsItem] = await db
-        .select()
+        .select({
+          id: analytics.id,
+          userId: analytics.userId,
+          totalMessages: analytics.totalMessages,
+          aiResponses: analytics.aiResponses,
+          manualResponses: analytics.manualResponses,
+          sentimentScore: analytics.sentimentScore,
+          date: analytics.date
+        })
         .from(analytics)
         .where(eq(analytics.userId, userId))
         .orderBy(desc(analytics.date))
@@ -1336,7 +1345,8 @@ export class DatabaseStorage implements IStorage {
       return analyticsItem;
     } catch (error) {
       console.error("Error fetching analytics:", error);
-      throw new Error(`Failed to get analytics: ${error.message}`);
+      // Return undefined instead of throwing to prevent app crashes
+      return undefined;
     }
   }
 
