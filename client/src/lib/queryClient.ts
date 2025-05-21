@@ -32,13 +32,15 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   try {
-    // Get current organization ID from local storage
+    // Get current organization ID and auth token from local storage
     const organizationId = getCurrentOrganizationId();
+    const authToken = localStorage.getItem("authToken");
     
-    // Prepare headers with organization context
+    // Prepare headers with organization context and auth token
     const headers: Record<string, string> = {
       ...(data ? { "Content-Type": "application/json" } : {}),
-      ...(organizationId ? { "X-Organization-ID": organizationId } : {})
+      ...(organizationId ? { "X-Organization-ID": organizationId } : {}),
+      ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
     };
     
     const res = await fetch(url, {
@@ -98,12 +100,14 @@ export const getQueryFn: <T>(options: {
         return null; // Return null instead of throwing an error for non-API routes
       }
       
-      // Get current organization ID for multi-tenant security
+      // Get current organization ID and auth token for security
       const organizationId = getCurrentOrganizationId();
+      const authToken = localStorage.getItem("authToken");
       
-      // Add organization ID to headers for proper data isolation
+      // Add organization ID and auth token to headers
       const headers: Record<string, string> = {
-        ...(organizationId ? { "X-Organization-ID": organizationId } : {})
+        ...(organizationId ? { "X-Organization-ID": organizationId } : {}),
+        ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
       };
       
       const res = await fetch(url, {

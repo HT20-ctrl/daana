@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,64 +13,80 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 
-// Signup validation schema
-const signupSchema = z.object({
-  firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
-  email: z.string().email('Please enter a valid email'),
+// Validation schema
+const signUpSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string()
-}).refine(data => data.password === data.confirmPassword, {
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  agreeToTerms: z.literal(true, {
+    errorMap: () => ({ message: 'You must agree to the terms and conditions' })
+  })
+}).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword']
 });
 
-type SignupFormValues = z.infer<typeof signupSchema>;
+type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-export default function SignupPage() {
-  const [, navigate] = useLocation();
+export default function SignUpPage() {
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const [signupError, setSignupError] = useState<string | null>(null);
   
   // Initialize form
-  const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  const form = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      agreeToTerms: false
     }
   });
 
-  // Handle signup mutation
-  const signupMutation = useMutation({
-    mutationFn: async (formData: SignupFormValues) => {
-      const { confirmPassword, ...userData } = formData;
-      const response = await apiRequest('POST', '/api/auth/signup', userData);
+  // Handle sign-up mutation
+  const signUpMutation = useMutation({
+    mutationFn: async (formData: Omit<SignUpFormValues, 'confirmPassword' | 'agreeToTerms'>) => {
+      const response = await apiRequest('POST', '/api/auth/signup', formData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Show success message
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: "Account created successfully!",
+        description: "You can now sign in with your credentials.",
         variant: "success"
       });
-      navigate('/organization-setup');
+      
+      // Redirect to sign in page
+      navigate('/signin');
     },
     onError: (error: any) => {
+      console.error('Sign-up error:', error);
+      setSignupError(error.message || 'Failed to create account');
+      
       toast({
-        title: "Registration failed",
-        description: error.message || "There was an error creating your account.",
+        title: "Sign-up failed",
+        description: error.message || "There was an error creating your account. Please try again.",
         variant: "destructive"
       });
     }
   });
 
   // Form submission handler
-  const onSubmit = (values: SignupFormValues) => {
-    signupMutation.mutate(values);
+  const onSubmit = (values: SignUpFormValues) => {
+    setSignupError(null);
+    
+    // Remove confirmPassword and agreeToTerms from data sent to API
+    const { confirmPassword, agreeToTerms, ...signupData } = values;
+    signUpMutation.mutate(signupData);
   };
 
   return (
@@ -83,13 +99,21 @@ export default function SignupPage() {
             </div>
           </div>
           <CardTitle className="text-2xl text-center font-bold bg-gradient-to-br from-blue-600 to-indigo-800 bg-clip-text text-transparent">
-            Create Your Dana AI Account
+            Create your Dana AI account
           </CardTitle>
           <CardDescription className="text-center">
             Enter your information to get started
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {signupError && (
+            <Alert className="mb-4 bg-red-50 text-red-800 border-red-200">
+              <AlertDescription>
+                {signupError}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -140,7 +164,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -153,18 +177,38 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="agreeToTerms"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        I agree to the <a href="/terms" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</a>
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800"
-                disabled={signupMutation.isPending}
+                disabled={signUpMutation.isPending}
               >
-                {signupMutation.isPending ? "Creating Account..." : "Create Account"}
+                {signUpMutation.isPending ? "Creating account..." : "Create account"}
               </Button>
             </form>
           </Form>
@@ -211,11 +255,6 @@ export default function SignupPage() {
             >
               Sign in
             </a>
-          </div>
-          <div className="text-center text-xs text-gray-500">
-            By creating an account, you agree to our{" "}
-            <a href="/terms" className="underline">Terms of Service</a> and{" "}
-            <a href="/privacy" className="underline">Privacy Policy</a>
           </div>
         </CardFooter>
       </Card>

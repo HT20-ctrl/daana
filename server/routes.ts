@@ -13,25 +13,8 @@ import { filterByOrganization, ensureOrganizationContext } from "./utils/multiTe
 // In development mode, you can use this middleware for testing without JWT auth
 // This can be toggled with an environment variable
 const isDev = process.env.NODE_ENV !== 'production';
-const isAuthenticated = isDev 
-  ? (req: AuthRequest, res: Response, next: any) => {
-      // Set a demo user ID for all requests in development
-      req.user = { 
-        id: "1",
-        email: "demo@example.com",
-        firstName: "Demo",
-        lastName: "User",
-        role: "admin",
-        organizationId: "1",
-        isVerified: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      req.userId = "1";
-      req.organizationId = "1";
-      next();
-    }
-  : authenticateJWT; // Use JWT authentication in production
+// Only use JWT authentication to ensure proper security in all environments
+const isAuthenticated = authenticateJWT;
 import multer from "multer";
 import { generateAIResponse, extractTextFromFiles } from "./ai";
 import { z } from "zod";
