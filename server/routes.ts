@@ -25,6 +25,7 @@ import {
   type NotificationType,
   type NotificationData
 } from './services/notificationService';
+import { cacheService } from './services/cacheService';
 //import { 
 //  platformQueries, 
 //  knowledgeBaseQueries 
@@ -101,21 +102,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Platforms API - optimized with caching and performance monitoring
+  // Platforms API - optimized with memory caching for much faster response times
   app.get("/api/platforms", async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const cacheKey = `platforms:${userId}`;
       
-      // Use direct database query with performance timing
+      // Use in-memory caching with the cache service
       const startTime = Date.now();
-      const platforms = await storage.getPlatformsByUserId(userId);
+      
+      // Get platforms with caching (30 second TTL)
+      const platforms = await cacheService.getOrSet(
+        cacheKey,
+        () => storage.getPlatformsByUserId(userId),
+        30 // Cache for 30 seconds
+      );
+      
       const queryTime = Date.now() - startTime;
       
-      if (queryTime > 500) {
+      if (queryTime > 200) {
         console.log(`⏱️ Platforms query performance: ${queryTime}ms`);
       }
       
-      // Add cache headers - cache for 60 seconds on client side
+      // Add cache headers for client-side caching as well
       res.setHeader('Cache-Control', 'private, max-age=60');
       res.json(platforms);
     } catch (error) {
@@ -405,24 +414,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Knowledge Base API - Optimized with caching
+  // Knowledge Base API - Optimized with memory caching for significantly faster responses
   app.get("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const cacheKey = `knowledge-base:${userId}`;
       
-      // Use direct optimized query with performance timing
+      // Use in-memory caching with performance timing
       const startTime = Date.now();
       
-      // Optimized query using the database directly
-      const knowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
+      // Get knowledge base with caching (60 second TTL)
+      const knowledgeBase = await cacheService.getOrSet(
+        cacheKey,
+        () => storage.getKnowledgeBaseByUserId(userId),
+        60 // Cache for 60 seconds
+      );
       
       const queryTime = Date.now() - startTime;
       
-      if (queryTime > 500) {
-        console.log(`⚠️ Knowledge base query took ${queryTime}ms to execute`);
+      if (queryTime > 200) {
+        console.log(`⏱️ Knowledge base query performance: ${queryTime}ms`);
       }
       
-      // Add cache headers - cache for 30 seconds on client side
+      // Add cache headers for client-side caching as well
       res.setHeader('Cache-Control', 'private, max-age=30');
       res.json(knowledgeBase);
     } catch (error) {
