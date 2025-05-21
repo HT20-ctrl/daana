@@ -483,10 +483,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Using file path:", filePath);
       
       // Set the appropriate content type
-      res.setHeader('Content-Type', file.fileType || 'application/octet-stream');
+      const contentType = file.fileType === 'pdf' ? 'application/pdf' : 
+                        file.fileType === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 
+                        file.fileType === 'txt' ? 'text/plain' : 
+                        'application/octet-stream';
+      
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
       
-      // Send the file
+      // Send the file using an absolute path
+      console.log(`Attempting to download file from path: ${filePath}`);
       return res.download(filePath);
     } catch (error) {
       console.error("Error downloading file:", error);
