@@ -7,6 +7,7 @@ import cors from 'cors';
 import { errorHandler, logger } from "./errorHandling";
 import { setupMonitoring } from "./monitoring";
 import { performanceMiddleware } from "./monitoring/performance";
+import { addOrganizationContext } from "./middleware/multiTenant";
 
 const app = express();
 
@@ -16,6 +17,9 @@ app.use(express.urlencoded({ extended: false }));
 
 // Add performance monitoring middleware
 app.use(performanceMiddleware);
+
+// Set up organization context middleware for multi-tenant security
+app.use(addOrganizationContext);
 
 // Set up essential security features
 // 1. Configure CORS

@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { platformQueries, conversationQueries, knowledgeBaseQueries, analyticsQueries } from "./multiTenantStorage";
 import { disconnectFacebook } from "./platforms/facebook";
 import { disconnectInstagram } from "./platforms/instagram";
 // Import authentication and security middleware
@@ -107,6 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId;
+      const organizationId = req.organizationId;
       const orgId = req.organizationId;
       
       // Create organization-specific cache key for multi-tenant data isolation
@@ -150,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       
       // Add both userId and organizationId for multi-tenant security
@@ -175,6 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:id/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const platformId = parseInt(req.params.id);
       
@@ -216,6 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/facebook/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const platformId = req.body.platformId;
       
@@ -255,6 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/instagram/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const platformId = req.body.platformId;
       
@@ -295,6 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/conversations", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       
       // Get conversations with organization filtering to ensure data isolation
@@ -534,6 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/knowledge-base", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       
       // Create organization-specific cache key for multi-tenant data isolation
@@ -644,6 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/knowledge-base/:id", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const fileId = parseInt(req.params.id);
       
@@ -700,6 +709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const userId = req.userId as string;
+      const organizationId = req.organizationId;
         const organizationId = req.organizationId as string;
         console.log("Processing upload for user:", userId);
         const file = req.file;
@@ -810,6 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/profile", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const profileData = req.body;
       
       console.log("Updating user profile:", { userId, profileData });
@@ -881,6 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/ai-settings", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const aiSettings = req.body;
       
       console.log("Updating AI settings for user:", userId, aiSettings);
@@ -933,6 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/notification-settings", isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const notificationSettings = req.body;
       
       console.log("Updating notification settings for user:", userId, notificationSettings);
@@ -983,6 +996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notifications", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       
       // Get organization-specific notifications with proper data isolation
@@ -1004,6 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notifications/:id/read", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const notificationId = req.params.id;
       
@@ -1028,6 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notifications/test", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
+      const organizationId = req.organizationId;
       const organizationId = req.organizationId as string;
       const { type, title, message, link } = req.body;
       
