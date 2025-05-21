@@ -28,6 +28,7 @@ import NotFound from "@/pages/not-found";
 import GoogleAuthPage from "@/pages/google-auth";
 import LandingPage from "@/pages/landing";
 import SignInPage from "@/pages/signin";
+import SignUpPage from "@/pages/signup";
 import ConversationDetail from "@/pages/conversation-detail";
 
 // Auth loading screen
@@ -143,6 +144,9 @@ function AuthRouter() {
       </Route>
       <Route path="/signin">
         <SignInPage />
+      </Route>
+      <Route path="/signup">
+        <SignUpPage />
       </Route>
       <Route path="/dashboard">
         <MainApp />
