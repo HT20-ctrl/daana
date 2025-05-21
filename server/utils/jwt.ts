@@ -1,40 +1,117 @@
 import jwt from 'jsonwebtoken';
+import { nanoid } from 'nanoid';
 
-// JWT secret from environment variables
-const JWT_SECRET = process.env.SESSION_SECRET || 'replace-this-with-a-real-secret';
-const JWT_EXPIRY = '24h'; // Token expires in 24 hours
+// Secret keys for token signing
+const accessTokenSecret = process.env.SESSION_SECRET || 'UNSAFE_DEVELOPMENT_SECRET';
+const refreshTokenSecret = accessTokenSecret + '_refresh';
+const verificationTokenSecret = accessTokenSecret + '_verification';
+const passwordResetTokenSecret = accessTokenSecret + '_reset';
 
-interface TokenPayload {
+// Token expiration times
+const ACCESS_TOKEN_EXPIRY = '15m';  // 15 minutes
+const REFRESH_TOKEN_EXPIRY = '7d';  // 7 days
+const VERIFICATION_TOKEN_EXPIRY = '3d';  // 3 days
+const PASSWORD_RESET_TOKEN_EXPIRY = '1h';  // 1 hour
+
+// Token payload interface
+export interface TokenPayload {
   userId: string;
-  email: string;
+  email?: string;
   role?: string;
   organizationId?: string;
 }
 
-// Generate a JWT token
-export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+/**
+ * Generate an access token for authenticated requests
+ * @param payload User data to include in the token
+ * @returns Signed JWT access token
+ */
+export function generateAccessToken(payload: TokenPayload): string {
+  return jwt.sign(payload, accessTokenSecret, {
+    expiresIn: ACCESS_TOKEN_EXPIRY,
+  });
 }
 
-// Verify a JWT token
-export function verifyToken(token: string): TokenPayload {
+/**
+ * Generate a refresh token for obtaining new access tokens
+ * @param payload User data to include in the token
+ * @returns Signed JWT refresh token
+ */
+export function generateRefreshToken(payload: TokenPayload): string {
+  return jwt.sign(payload, refreshTokenSecret, {
+    expiresIn: REFRESH_TOKEN_EXPIRY,
+  });
+}
+
+/**
+ * Generate an email verification token
+ * @param userId User ID to include in the token
+ * @returns Signed JWT verification token
+ */
+export function generateVerificationToken(userId: string): string {
+  return jwt.sign({ userId, tokenId: nanoid(8) }, verificationTokenSecret, {
+    expiresIn: VERIFICATION_TOKEN_EXPIRY,
+  });
+}
+
+/**
+ * Generate a password reset token
+ * @param userId User ID to include in the token
+ * @returns Signed JWT password reset token
+ */
+export function generatePasswordResetToken(userId: string): string {
+  return jwt.sign({ userId, tokenId: nanoid(8) }, passwordResetTokenSecret, {
+    expiresIn: PASSWORD_RESET_TOKEN_EXPIRY,
+  });
+}
+
+/**
+ * Verify a token and extract its payload
+ * @param token JWT token to verify
+ * @param type Type of token (access, refresh, verification, reset)
+ * @returns Token payload if valid, null otherwise
+ */
+export function verifyToken(
+  token: string,
+  type: 'access' | 'refresh' | 'verification' | 'reset'
+): any {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    let secret;
+    
+    switch (type) {
+      case 'access':
+        secret = accessTokenSecret;
+        break;
+      case 'refresh':
+        secret = refreshTokenSecret;
+        break;
+      case 'verification':
+        secret = verificationTokenSecret;
+        break;
+      case 'reset':
+        secret = passwordResetTokenSecret;
+        break;
+      default:
+        return null;
+    }
+    
+    return jwt.verify(token, secret);
   } catch (error) {
-    throw new Error('Invalid or expired token');
-  }
-}
-
-// Extract user info from authorization header
-export function extractUserFromToken(authHeader?: string): TokenPayload | null {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error(`Token verification error (${type}):`, error);
     return null;
   }
+}
 
-  const token = authHeader.split(' ')[1];
+/**
+ * Decode a token without verification (useful for debugging)
+ * @param token JWT token to decode
+ * @returns Decoded token payload
+ */
+export function decodeToken(token: string): any {
   try {
-    return verifyToken(token);
+    return jwt.decode(token);
   } catch (error) {
+    console.error('Token decode error:', error);
     return null;
   }
 }
