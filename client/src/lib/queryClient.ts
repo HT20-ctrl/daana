@@ -1,6 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { handleApiError, ClientApiError, ErrorCode } from './error-handling';
 
+// Function to get the current organization ID from local storage
+const getCurrentOrganizationId = (): string | null => {
+  return localStorage.getItem("currentOrganizationId");
+};
+
 async function handleResponseError(res: Response) {
   if (!res.ok) {
     // Instead of just throwing a generic error, use our advanced error handling
@@ -27,9 +32,18 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   try {
+    // Get current organization ID from local storage
+    const organizationId = getCurrentOrganizationId();
+    
+    // Prepare headers with organization context
+    const headers: Record<string, string> = {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...(organizationId ? { "X-Organization-ID": organizationId } : {})
+    };
+    
     const res = await fetch(url, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
+      headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
     });
@@ -84,8 +98,17 @@ export const getQueryFn: <T>(options: {
         return null; // Return null instead of throwing an error for non-API routes
       }
       
+      // Get current organization ID for multi-tenant security
+      const organizationId = getCurrentOrganizationId();
+      
+      // Add organization ID to headers for proper data isolation
+      const headers: Record<string, string> = {
+        ...(organizationId ? { "X-Organization-ID": organizationId } : {})
+      };
+      
       const res = await fetch(url, {
         credentials: "include",
+        headers
       });
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
