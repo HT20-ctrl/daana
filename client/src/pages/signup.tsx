@@ -23,8 +23,8 @@ const signUpSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  agreeToTerms: z.literal(true, {
-    errorMap: () => ({ message: 'You must agree to the terms and conditions' })
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: 'You must agree to the terms and conditions'
   })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
