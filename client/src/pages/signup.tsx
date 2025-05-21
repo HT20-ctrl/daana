@@ -53,11 +53,39 @@ export default function SignUpPage() {
     }
   });
 
-  // Handle sign-up mutation
+  // Handle sign-up mutation with improved error handling
   const signUpMutation = useMutation({
     mutationFn: async (formData: Omit<SignUpFormValues, 'confirmPassword' | 'agreeToTerms'>) => {
-      const response = await apiRequest('POST', '/api/auth/signup', formData);
-      return response.json();
+      try {
+        // Make direct fetch request instead of using apiRequest to bypass potential issues
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+          credentials: 'include'
+        });
+
+        // Check if response is successful
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.message || `Registration failed with status ${response.status}`);
+        }
+
+        // Check content type to make sure we're getting JSON back
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          throw new Error('The server sent an HTML response instead of JSON. Please try again.');
+        }
+
+        // Parse JSON response
+        const data = await response.json();
+        return data;
+      } catch (error: any) {
+        console.error('Sign-up request error:', error);
+        throw new Error(error.message || 'Failed to create account. Please try again.');
+      }
     },
     onSuccess: (data) => {
       // Show success message
@@ -66,6 +94,11 @@ export default function SignUpPage() {
         description: "You can now sign in with your credentials.",
         variant: "default"
       });
+      
+      // Store auth token if provided in response
+      if (data.token) {
+        localStorage.setItem("authToken", data.token);
+      }
       
       // Redirect to sign in page
       navigate('/signin');
