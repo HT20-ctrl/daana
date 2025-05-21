@@ -639,9 +639,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete knowledge base file endpoint
-  app.delete("/api/knowledge-base/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/knowledge-base/:id", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
       const fileId = parseInt(req.params.id);
       
       // Get the file info to check ownership and get file path
@@ -651,9 +652,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found" });
       }
       
-      // Verify the file belongs to the user
-      if (file.userId !== userId) {
-        return res.status(403).json({ message: "Access denied" });
+      // Verify the file belongs to both the user and organization (multi-tenant data isolation)
+      if (file.userId !== userId || (file.organizationId && file.organizationId !== organizationId)) {
+        return res.status(403).json({ message: "Access denied - this file does not belong to your organization" });
       }
       
       // Delete from filesystem if there's a path
@@ -670,8 +671,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete from database
       await storage.deleteKnowledgeBase(fileId);
       
-      // Clear the cache for this user's knowledge base items
-      cacheService.delete(`knowledge-base:${userId}`);
+      // Clear the organization-specific cache for this user's knowledge base items
+      cacheService.delete(`knowledge-base:${userId}:${organizationId}`);
       
       return res.status(200).json({ success: true, message: "File deleted successfully" });
     } catch (error) {
