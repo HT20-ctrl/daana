@@ -1004,7 +1004,7 @@ export class DatabaseStorage implements IStorage {
       const [updatedAnalytics] = await db
         .update(analytics)
         .set({
-          totalMessages: analyticsItem.totalMessages + 1,
+          totalMessages: (analyticsItem.totalMessages || 0) + 1,
           date: new Date(),
         })
         .where(eq(analytics.id, analyticsItem.id))
@@ -1042,14 +1042,14 @@ export class DatabaseStorage implements IStorage {
       const [updatedAnalytics] = await db
         .update(analytics)
         .set({
-          aiResponses: analyticsItem.aiResponses + 1,
+          aiResponses: (analyticsItem.aiResponses || 0) + 1,
           date: new Date(),
         })
         .where(eq(analytics.id, analyticsItem.id))
         .returning();
       
       return updatedAnalytics;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error incrementing AI responses:", error);
       throw new Error(`Failed to increment AI responses: ${error.message}`);
     }
@@ -1080,14 +1080,14 @@ export class DatabaseStorage implements IStorage {
       const [updatedAnalytics] = await db
         .update(analytics)
         .set({
-          manualResponses: analyticsItem.manualResponses + 1,
+          manualResponses: (analyticsItem.manualResponses || 0) + 1,
           date: new Date(),
         })
         .where(eq(analytics.id, analyticsItem.id))
         .returning();
       
       return updatedAnalytics;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error incrementing manual responses:", error);
       throw new Error(`Failed to increment manual responses: ${error.message}`);
     }
