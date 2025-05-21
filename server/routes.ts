@@ -4,23 +4,31 @@ import { storage } from "./storage";
 import { disconnectFacebook } from "./platforms/facebook";
 import { disconnectInstagram } from "./platforms/instagram";
 // Import authentication and security middleware
-import { authenticateUser, enforceRowLevelSecurity } from "./middleware/auth";
+import { authenticateJWT, enforceOrganizationAccess, type AuthRequest } from "./middleware/auth";
 import authRoutes from "./routes/auth";
 
-// In development mode, you can use this middleware for testing without auth
+// In development mode, you can use this middleware for testing without JWT auth
 // This can be toggled with an environment variable
 const isDev = process.env.NODE_ENV !== 'production';
 const isAuthenticated = isDev 
-  ? (req: any, res: any, next: any) => {
+  ? (req: AuthRequest, res: Response, next: any) => {
       // Set a demo user ID for all requests in development
       req.user = { 
         id: "1",
         email: "demo@example.com",
-        role: "admin"
+        firstName: "Demo",
+        lastName: "User",
+        role: "admin",
+        organizationId: "1",
+        isVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
+      req.userId = "1";
+      req.organizationId = "1";
       next();
     }
-  : authenticateUser; // Use real authentication in production
+  : authenticateJWT; // Use JWT authentication in production
 import multer from "multer";
 import { generateAIResponse, extractTextFromFiles } from "./ai";
 import { z } from "zod";
@@ -66,8 +74,10 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // For development, we'll use a simpler auth approach
-  console.log("Setting up simplified authentication for development");
+  // Register all authentication routes
+  app.use('/api/auth', authRoutes);
+  
+  console.log("Setting up simplified routes with enhanced security");
 
   // Create HTTP server
   const httpServer = createServer(app);
@@ -92,10 +102,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This provides more organized and maintainable auth handling
 
   // Platforms API - optimized with memory caching for much faster response times
-  app.get("/api/platforms", async (req: any, res) => {
+  app.get("/api/platforms", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const cacheKey = `platforms:${userId}`;
+      const userId = req.userId;
+      const orgId = req.organizationId;
+      
+      // Create organization-specific cache key for multi-tenant data isolation
+      const cacheKey = `platforms:${userId}:${orgId}`;
       
       // Use in-memory caching with the cache service
       const startTime = Date.now();
