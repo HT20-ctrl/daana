@@ -881,6 +881,36 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Failed to get user: ${error.message}`);
     }
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (error: any) {
+      console.error("Error fetching user by email:", error);
+      throw new Error(`Failed to get user by email: ${error.message}`);
+    }
+  }
+  
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.verificationToken, token));
+      return user;
+    } catch (error: any) {
+      console.error("Error fetching user by verification token:", error);
+      throw new Error(`Failed to get user by verification token: ${error.message}`);
+    }
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.resetToken, token));
+      return user;
+    } catch (error: any) {
+      console.error("Error fetching user by reset token:", error);
+      throw new Error(`Failed to get user by reset token: ${error.message}`);
+    }
+  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     try {
@@ -899,6 +929,146 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error("Error upserting user:", error);
       throw new Error(`Failed to upsert user: ${error.message}`);
+    }
+  }
+  
+  // Organization operations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    try {
+      const [organization] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, id));
+      return organization;
+    } catch (error: any) {
+      console.error("Error fetching organization:", error);
+      throw new Error(`Failed to get organization: ${error.message}`);
+    }
+  }
+  
+  async createOrganization(orgData: InsertOrganization): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .insert(organizations)
+        .values(orgData)
+        .returning();
+      return organization;
+    } catch (error: any) {
+      console.error("Error creating organization:", error);
+      throw new Error(`Failed to create organization: ${error.message}`);
+    }
+  }
+  
+  async updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .update(organizations)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, id))
+        .returning();
+      
+      if (!organization) {
+        throw new Error(`Organization with ID ${id} not found`);
+      }
+      
+      return organization;
+    } catch (error: any) {
+      console.error("Error updating organization:", error);
+      throw new Error(`Failed to update organization: ${error.message}`);
+    }
+  }
+  
+  // Organization membership operations
+  async getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+    try {
+      return await db
+        .select()
+        .from(organizationMembers)
+        .where(eq(organizationMembers.organizationId, organizationId));
+    } catch (error: any) {
+      console.error("Error fetching organization members:", error);
+      throw new Error(`Failed to get organization members: ${error.message}`);
+    }
+  }
+  
+  async getOrganizationsByUserId(userId: string): Promise<Organization[]> {
+    try {
+      // First get all membership records for this user
+      const memberships = await db
+        .select()
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, userId));
+      
+      // If no memberships, return empty array
+      if (memberships.length === 0) {
+        return [];
+      }
+      
+      // Get all organization IDs from memberships
+      const orgIds = memberships.map(membership => membership.organizationId);
+      
+      // Fetch all organizations matching these IDs
+      const orgs = await db
+        .select()
+        .from(organizations)
+        .where(organizations.id.in(orgIds));
+      
+      return orgs;
+    } catch (error: any) {
+      console.error("Error fetching user organizations:", error);
+      throw new Error(`Failed to get user organizations: ${error.message}`);
+    }
+  }
+  
+  async addOrganizationMember(memberData: InsertOrganizationMember): Promise<OrganizationMember> {
+    try {
+      const [member] = await db
+        .insert(organizationMembers)
+        .values(memberData)
+        .returning();
+      return member;
+    } catch (error: any) {
+      console.error("Error adding organization member:", error);
+      throw new Error(`Failed to add organization member: ${error.message}`);
+    }
+  }
+  
+  async updateOrganizationMember(id: number, data: Partial<InsertOrganizationMember>): Promise<OrganizationMember> {
+    try {
+      const [member] = await db
+        .update(organizationMembers)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizationMembers.id, id))
+        .returning();
+      
+      if (!member) {
+        throw new Error(`Organization member with ID ${id} not found`);
+      }
+      
+      return member;
+    } catch (error: any) {
+      console.error("Error updating organization member:", error);
+      throw new Error(`Failed to update organization member: ${error.message}`);
+    }
+  }
+  
+  async removeOrganizationMember(id: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(organizationMembers)
+        .where(eq(organizationMembers.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error: any) {
+      console.error("Error removing organization member:", error);
+      throw new Error(`Failed to remove organization member: ${error.message}`);
     }
   }
 

@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from "express";
-import { extractUserFromToken } from "../utils/jwt";
-import { storage } from "../storage";
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { storage } from '../storage';
+import { User } from '@shared/schema';
 
 /**
  * Authentication middleware to check if user is authenticated
@@ -8,31 +9,40 @@ import { storage } from "../storage";
  */
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get token from authorization header
+    // Check for token in Authorization header
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
     
-    const tokenData = extractUserFromToken(authHeader);
+    // Extract the token
+    const token = authHeader.split(' ')[1];
     
-    if (!tokenData) {
-      return res.status(401).json({ error: "Unauthorized" });
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET!) as jwt.JwtPayload;
+    
+    if (!decoded.userId) {
+      return res.status(401).json({ message: "Unauthorized: Invalid token" });
     }
     
-    // Add user data to request
-    req.user = {
-      id: tokenData.userId,
-      email: tokenData.email,
-      role: tokenData.role,
-      organizationId: tokenData.organizationId
-    };
+    // Get user from database
+    const user = await storage.getUser(decoded.userId);
     
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+    
+    // Store user in request object
+    req.user = user;
     next();
   } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ message: "Unauthorized: Invalid token" });
+    }
+    
     console.error("Authentication error:", error);
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(500).json({ message: "Internal server error during authentication" });
   }
 };
 
@@ -44,40 +54,38 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
 export const enforceRowLevelSecurity = (resourceIdParam: string = 'id', userIdField: string = 'userId') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Skip for admins
-      if (req.user?.role === 'admin') {
-        return next();
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized: Authentication required" });
       }
       
       const resourceId = req.params[resourceIdParam];
       
       if (!resourceId) {
-        return next();
+        return res.status(400).json({ message: "Bad request: Resource ID is required" });
       }
       
-      // For collection resources that have a userId field
-      const userResources = ['platforms', 'conversations', 'messages', 'knowledgeBase', 'analytics'];
-      const resourceType = req.originalUrl.split('/')[2];
+      // Get the resource from the database
+      // The resource type is determined based on the route
+      const resource = await getResourceById(req.path.split('/')[2], resourceId);
       
-      if (userResources.includes(resourceType)) {
-        const resource = await getResourceById(resourceType, resourceId);
-        
-        if (!resource) {
-          return res.status(404).json({ error: "Resource not found" });
-        }
-        
-        // Check if resource belongs to user or user's organization
-        if (resource[userIdField] !== req.user?.id && 
-            (!req.user?.organizationId || !resource.organizationId || 
-             resource.organizationId !== req.user?.organizationId)) {
-          return res.status(403).json({ error: "Forbidden" });
-        }
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
       }
       
-      next();
+      // Check if the resource belongs to the user or their organization
+      if (resource[userIdField] === req.user.id) {
+        // Resource belongs to the user directly
+        next();
+      } else if (req.user.organizationId && resource.organizationId === req.user.organizationId) {
+        // Resource belongs to the user's organization
+        next();
+      } else {
+        // User doesn't have access to this resource
+        return res.status(403).json({ message: "Forbidden: You don't have access to this resource" });
+      }
     } catch (error) {
       console.error("Row-level security error:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ message: "Internal server error during access control check" });
     }
   };
 };
@@ -88,20 +96,19 @@ export const enforceRowLevelSecurity = (resourceIdParam: string = 'id', userIdFi
  */
 export const requireRole = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
-      if (!roles.includes(req.user.role)) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-      
-      next();
-    } catch (error) {
-      console.error("Role check error:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: Authentication required" });
     }
+    
+    const userRole = req.user.role;
+    
+    if (!userRole || !roles.includes(userRole)) {
+      return res.status(403).json({ 
+        message: `Forbidden: This action requires one of these roles: ${roles.join(', ')}`
+      });
+    }
+    
+    next();
   };
 };
 
@@ -111,53 +118,53 @@ export const requireRole = (roles: string[]) => {
  */
 export const enforceOrganizationAccess = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Skip for admins
-    if (req.user?.role === 'admin') {
-      return next();
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: Authentication required" });
     }
     
+    // Get organizationId from request parameters
     const organizationId = req.params.organizationId || req.query.organizationId;
     
-    if (!organizationId || typeof organizationId !== 'string') {
-      return next();
+    if (!organizationId) {
+      return res.status(400).json({ message: "Bad request: Organization ID is required" });
     }
     
-    // Check if user belongs to the organization
-    if (req.user?.organizationId !== organizationId) {
-      return res.status(403).json({ error: "Forbidden" });
+    // Check if user is a member of this organization
+    if (req.user.organizationId !== organizationId) {
+      // User is not a member of this organization
+      return res.status(403).json({ 
+        message: "Forbidden: You don't have access to this organization's data"
+      });
     }
     
     next();
   } catch (error) {
     console.error("Organization access error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error during organization access check" });
   }
 };
 
-// Helper function to get a resource by ID
+// Helper function to get a resource by its ID
 async function getResourceById(resourceType: string, id: string | number): Promise<any> {
   switch (resourceType) {
     case 'platforms':
-      return storage.getPlatformById(Number(id));
+      return await storage.getPlatformById(Number(id));
     case 'conversations':
-      return storage.getConversationById(Number(id));
-    case 'knowledgeBase':
-      return storage.getKnowledgeBaseById(Number(id));
+      return await storage.getConversationById(Number(id));
+    case 'knowledge-base':
+      return await storage.getKnowledgeBaseById(Number(id));
+    case 'organizations':
+      return await storage.getOrganization(String(id));
     default:
       return null;
   }
 }
 
-// Extend the Express Request interface to include user
+// Type augmentation for Request to include user property
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-        email: string;
-        role: string;
-        organizationId?: string;
-      };
+      user?: User;
     }
   }
 }

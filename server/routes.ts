@@ -3,18 +3,24 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { disconnectFacebook } from "./platforms/facebook";
 import { disconnectInstagram } from "./platforms/instagram";
-// import { setupAuth, isAuthenticated } from "./replitAuth";
+// Import authentication and security middleware
+import { authenticateUser, enforceRowLevelSecurity } from "./middleware/auth";
+import authRoutes from "./routes/auth";
 
-// Development middleware for testing without auth
-const isAuthenticated = (req: any, res: any, next: any) => {
-  // Set a demo user ID for all requests
-  req.user = { 
-    claims: { 
-      sub: "1" 
-    } 
-  };
-  next();
-};
+// In development mode, you can use this middleware for testing without auth
+// This can be toggled with an environment variable
+const isDev = process.env.NODE_ENV !== 'production';
+const isAuthenticated = isDev 
+  ? (req: any, res: any, next: any) => {
+      // Set a demo user ID for all requests in development
+      req.user = { 
+        id: "1",
+        email: "demo@example.com",
+        role: "admin"
+      };
+      next();
+    }
+  : authenticateUser; // Use real authentication in production
 import multer from "multer";
 import { generateAIResponse, extractTextFromFiles } from "./ai";
 import { z } from "zod";
@@ -81,26 +87,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     pendingMessages.get(userId).push(message);
   }
 
-  // Auth routes - using demo user for development
-  app.get('/api/auth/user', async (req: any, res) => {
-    try {
-      // For development, return a demo user
-      const demoUser = {
-        id: "1",
-        email: "demo@example.com",
-        firstName: "Demo",
-        lastName: "User",
-        profileImageUrl: null,
-        role: "admin",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      res.json(demoUser);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes are now handled in separate routes file
+  // The '/api/auth' prefix is registered at the top of this file
+  // This provides more organized and maintainable auth handling
 
   // Platforms API - optimized with memory caching for much faster response times
   app.get("/api/platforms", async (req: any, res) => {
