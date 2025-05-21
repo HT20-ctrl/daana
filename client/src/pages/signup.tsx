@@ -118,8 +118,11 @@ export default function SignUpPage() {
         localStorage.setItem("authToken", data.token);
       }
       
-      // Redirect to sign in page
-      navigate('/signin');
+      // Show success toast and give feedback before redirecting
+      setTimeout(() => {
+        // Redirect to sign in page after a short delay
+        navigate('/signin');
+      }, 1500);
     },
     onError: (error: any) => {
       console.error('Sign-up error:', error);
