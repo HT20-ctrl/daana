@@ -390,11 +390,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Knowledge Base API
+  // Knowledge Base API - Optimized with caching
   app.get("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const knowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
+      
+      // Use optimized query from query-optimizations.ts
+      const startTime = Date.now();
+      const knowledgeBase = await knowledgeBaseQueries.getByUserId(userId);
+      const queryTime = Date.now() - startTime;
+      
+      if (queryTime > 500) {
+        console.log(`⚠️ Knowledge base query took ${queryTime}ms to execute`);
+      }
+      
+      // Add cache headers - cache for 30 seconds on client side
+      res.setHeader('Cache-Control', 'private, max-age=30');
       res.json(knowledgeBase);
     } catch (error) {
       console.error("Error fetching knowledge base:", error);
