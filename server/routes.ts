@@ -118,7 +118,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cacheKey,
         async () => {
           console.log('🔍 Cache miss for platforms - loading from database...');
-          return await storage.getPlatformsByUserId(userId);
+          // Get all platforms for this user
+          const userPlatforms = await storage.getPlatformsByUserId(userId);
+          
+          // Filter platforms by organization ID for proper multi-tenant data isolation
+          // This ensures users can only see platforms belonging to their current organization
+          return userPlatforms.filter(platform => 
+            !platform.organizationId || platform.organizationId === orgId
+          );
         },
         120 // Cache for 2 minutes to improve performance
       );
@@ -169,15 +176,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organizationId = req.organizationId as string;
       const platformId = parseInt(req.params.id);
       
-      // First check if this platform belongs to the user and organization
+      // First check if this platform belongs to the user
       const existingPlatform = await storage.getPlatformById(platformId);
       if (!existingPlatform || existingPlatform.userId !== userId) {
         return res.status(404).json({ message: "Platform not found" });
       }
       
       // Multi-tenant security check - validate organization access
+      // This ensures users can only disconnect platforms in their current organization
       if (existingPlatform.organizationId && existingPlatform.organizationId !== organizationId) {
-        return res.status(403).json({ message: "You don't have permission to manage this platform" });
+        console.warn(`Security alert: User ${userId} attempted to disconnect platform ${platformId} from another organization (${existingPlatform.organizationId})`);
+        return res.status(403).json({ message: "You don't have permission to modify this platform" });
       }
       
       console.log(`Generic disconnect for platform ${platformId} (${existingPlatform.name})`);
