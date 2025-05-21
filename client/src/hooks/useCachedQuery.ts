@@ -86,7 +86,7 @@ export function useCachedQuery<TData = unknown, TError = Error>(
  */
 export function prefetchQuery<TData = unknown>(
   queryKey: QueryKey,
-  options: Omit<UseQueryOptions<TData, Error, TData, QueryKey>, 'queryKey'> = {}
+  options: EnhancedQueryOptions<TData> = {}
 ) {
   const queryClient = useQueryClient();
   const queryKeyString = Array.isArray(queryKey) ? queryKey.join(':') : String(queryKey);
@@ -115,6 +115,8 @@ export function prefetchQuery<TData = unknown>(
   return queryClient.prefetchQuery({
     queryKey,
     queryFn: options.queryFn || defaultQueryFn,
-    ...options
+    staleTime: options.staleTime,
+    gcTime: options.gcTime,
+    retry: options.retry ?? 1
   });
 }
