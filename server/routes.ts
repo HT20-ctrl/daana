@@ -529,10 +529,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Knowledge Base API - Optimized with memory caching for significantly faster responses
-  app.get("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
+  app.get("/api/knowledge-base", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const cacheKey = `knowledge-base:${userId}`;
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      
+      // Create organization-specific cache key for multi-tenant data isolation
+      const cacheKey = `knowledge-base:${userId}:${organizationId}`;
       
       // Use in-memory caching with performance timing
       const startTime = Date.now();
@@ -542,7 +545,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cacheKey,
         async () => {
           console.log('🔍 Cache miss for knowledge base - loading from database...');
-          return await storage.getKnowledgeBaseByUserId(userId);
+          // Get all knowledge base entries for this user
+          const allKnowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
+          
+          // Filter knowledge base entries by organization ID for proper multi-tenant data isolation
+          // This ensures users can only access knowledge base items from their current organization
+          return allKnowledgeBase.filter(entry => 
+            !entry.organizationId || entry.organizationId === organizationId
+          );
         },
         120 // Cache for 2 minutes to improve performance
       );
@@ -670,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
+  app.post("/api/knowledge-base", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     console.log("Knowledge base file upload request received", {
       contentType: req.headers['content-type'],
       contentLength: req.headers['content-length'],
@@ -686,7 +696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        const userId = req.user.claims.sub;
+        const userId = req.userId as string;
+        const organizationId = req.organizationId as string;
         console.log("Processing upload for user:", userId);
         const file = req.file;
         
@@ -736,12 +747,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const knowledgeBaseEntry = await storage.createKnowledgeBase({
           userId,
+          organizationId, // Add organization ID for multi-tenant data isolation
           fileName: file.originalname,
           fileType, // Using the simplified file type (pdf, docx, txt)
           fileSize: file.size,
           content: content || null,
           filePath: absoluteFilePath // Store the file path in the database
         });
+        
+        // Invalidate the organization-specific knowledge base cache
+        cacheService.invalidate(`knowledge-base:${userId}:${organizationId}`);
         
         // Return the created knowledge base entry
         return res.status(200).json(knowledgeBaseEntry);
