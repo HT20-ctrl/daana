@@ -48,6 +48,7 @@ export interface IStorage {
   getKnowledgeBaseById(id: number): Promise<KnowledgeBase | undefined>;
   createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase>;
   updateKnowledgeBase(id: number, data: Partial<KnowledgeBase>): Promise<KnowledgeBase>;
+  deleteKnowledgeBase(id: number): Promise<boolean>;
   
   // Analytics operations
   getAnalyticsByUserId(userId: string): Promise<Analytics | undefined>;
@@ -611,6 +612,13 @@ export class MemStorage implements IStorage {
     this.knowledgeBase.set(id, updatedKb);
     return updatedKb;
   }
+  
+  async deleteKnowledgeBase(id: number): Promise<boolean> {
+    if (!this.knowledgeBase.has(id)) {
+      return false;
+    }
+    return this.knowledgeBase.delete(id);
+  }
 
   // Analytics operations
   async getAnalyticsByUserId(userId: string): Promise<Analytics | undefined> {
@@ -959,6 +967,20 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error updating knowledge base item:", error);
       throw new Error(`Failed to update knowledge base item: ${error.message}`);
+    }
+  }
+  
+  async deleteKnowledgeBase(id: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(knowledgeBase)
+        .where(eq(knowledgeBase.id, id))
+        .returning({ id: knowledgeBase.id });
+      
+      return result.length > 0;
+    } catch (error: any) {
+      console.error("Error deleting knowledge base item:", error);
+      throw new Error(`Failed to delete knowledge base item: ${error.message}`);
     }
   }
 
