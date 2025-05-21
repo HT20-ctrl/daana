@@ -494,6 +494,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete knowledge base file endpoint
+  app.delete("/api/knowledge-base/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const fileId = parseInt(req.params.id);
+      
+      // Get the file info to check ownership and get file path
+      const file = await storage.getKnowledgeBaseById(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Verify the file belongs to the user
+      if (file.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Delete from filesystem if there's a path
+      if (file.filePath && fs.existsSync(file.filePath)) {
+        try {
+          fs.unlinkSync(file.filePath);
+          console.log(`File deleted from disk: ${file.filePath}`);
+        } catch (fsError) {
+          console.error("Error deleting file from disk:", fsError);
+          // Continue with database deletion even if file deletion fails
+        }
+      }
+      
+      // Delete from database
+      await storage.deleteKnowledgeBase(fileId);
+      
+      // Clear the cache for this user's knowledge base items
+      cacheService.delete(`knowledge-base:${userId}`);
+      
+      return res.status(200).json({ success: true, message: "File deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting knowledge base file:", error);
+      return res.status(500).json({ message: "Failed to delete file" });
+    }
+  });
+
   app.post("/api/knowledge-base", isAuthenticated, async (req: any, res) => {
     console.log("Knowledge base file upload request received", {
       contentType: req.headers['content-type'],
