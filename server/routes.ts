@@ -231,8 +231,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Conversations API with organization-level data segregation
   app.get("/api/conversations", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const conversations = await storage.getConversationsByUserId(userId);
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      
+      // Get conversations with organization filtering to ensure data isolation
+      const conversations = await storage.getConversationsByUserAndOrganization(userId, organizationId);
+      
+      // Cache the results with organization context
+      cacheService.set(`conversations:${userId}:${organizationId}`, conversations, 5 * 60); // 5 minutes cache
+      
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);

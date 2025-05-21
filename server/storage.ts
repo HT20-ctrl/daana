@@ -57,6 +57,7 @@ export interface IStorage {
   
   // Conversation operations
   getConversationsByUserId(userId: string): Promise<Conversation[]>;
+  getConversationsByUserAndOrganization(userId: string, organizationId: string): Promise<Conversation[]>;
   getConversationById(id: number): Promise<Conversation | undefined>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   
@@ -664,6 +665,19 @@ export class MemStorage implements IStorage {
         return bTime - aTime;
       });
   }
+  
+  async getConversationsByUserAndOrganization(userId: string, organizationId: string): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .filter((conversation) => 
+        conversation.userId === userId && 
+        (!conversation.organizationId || conversation.organizationId === organizationId)
+      )
+      .sort((a, b) => {
+        const aTime = a.lastMessageAt?.getTime() || 0;
+        const bTime = b.lastMessageAt?.getTime() || 0;
+        return bTime - aTime;
+      });
+  }
 
   async getConversationById(id: number): Promise<Conversation | undefined> {
     return this.conversations.get(id);
@@ -1174,7 +1188,30 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(conversations.lastMessageAt));
     } catch (error) {
       console.error("Error fetching conversations:", error);
-      throw new Error(`Failed to get conversations: ${error.message}`);
+      throw new Error(`Failed to get conversations: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  async getConversationsByUserAndOrganization(userId: string, organizationId: string): Promise<Conversation[]> {
+    try {
+      return await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.userId, userId),
+            // Either the conversation belongs to this organization or it doesn't have an organization ID
+            // This ensures backward compatibility with existing data
+            or(
+              eq(conversations.organizationId, organizationId),
+              isNull(conversations.organizationId)
+            )
+          )
+        )
+        .orderBy(desc(conversations.lastMessageAt));
+    } catch (error) {
+      console.error("Error fetching conversations by organization:", error);
+      throw new Error(`Failed to get conversations: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
