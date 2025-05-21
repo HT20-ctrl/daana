@@ -1,332 +1,492 @@
 /**
- * Authentication Service for Dana AI Platform
- * Provides functionality for user authentication, registration, and account management
+ * Authentication Service
+ * 
+ * Handles user authentication, registration, password reset, etc.
  */
-
-import { User, InsertUser, OrganizationMember, InsertOrganizationMember, InsertOrganization } from '@shared/schema';
-import { generateAccessToken, generateRefreshToken, generateVerificationToken, generatePasswordResetToken } from '../utils/jwt';
-import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from './emailService';
-import { storage } from '../storage';
-import { compare, hash } from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
 import { nanoid } from 'nanoid';
+import { db } from '../db';
+import { users, organizations, organizationMembers, type User, type UpsertUser } from '@shared/schema';
+import { generateAccessToken, generateRefreshToken, generateVerificationToken, generateResetToken } from '../utils/jwt';
+import { sendVerificationEmail, sendPasswordResetEmail, sendOrganizationInviteEmail } from './emailService';
+import { eq, and } from 'drizzle-orm';
 
-// Number of salt rounds for password hashing
 const SALT_ROUNDS = 10;
 
 /**
- * Login a user with email and password
- * @param email User's email address
- * @param password User's password
- * @returns User object with tokens if successful, null if login fails
+ * Register a new user with organization
  */
-export async function login(email: string, password: string): Promise<{
-  user: Omit<User, 'password'>;
-  accessToken: string;
-  refreshToken: string;
-} | null> {
-  try {
-    // Find user by email
-    const user = await storage.getUserByEmail(email);
-    
-    if (!user) {
-      console.warn(`Login attempt failed: User with email ${email} not found`);
-      return null;
-    }
-    
-    // Check if user's email is verified
-    if (!user.isVerified) {
-      console.warn(`Login attempt failed: User with email ${email} is not verified`);
-      return null;
-    }
-    
-    // Verify password
-    if (!user.password) {
-      console.warn(`Login attempt failed: User with email ${email} has no password set`);
-      return null;
-    }
-    
-    const isPasswordValid = await compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      console.warn(`Login attempt failed: Invalid password for user with email ${email}`);
-      return null;
-    }
-    
-    // Create tokens
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role || 'user',
-      ...(user.organizationId && { organizationId: user.organizationId })
-    };
-    
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-    
-    // Return user and tokens (excluding password)
-    const { password: _, ...userWithoutPassword } = user;
-    
-    return {
-      user: userWithoutPassword,
-      accessToken,
-      refreshToken
-    };
-  } catch (error) {
-    console.error('Login error:', error);
-    return null;
+export async function registerUser(
+  email: string,
+  password: string,
+  firstName?: string,
+  lastName?: string,
+  createOrganization: boolean = false,
+  organizationName?: string
+) {
+  // Check if user already exists
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    throw new Error('User with this email already exists');
   }
-}
 
-/**
- * Register a new user
- * @param userData User registration data
- * @returns User object if successful, null if registration fails
- */
-export async function register(userData: {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-  organizationName?: string;
-}): Promise<{
-  user: Omit<User, 'password'>;
-  verificationToken?: string;
-} | null> {
-  try {
-    // Check if user already exists
-    const existingUser = await storage.getUserByEmail(userData.email);
-    
-    if (existingUser) {
-      console.warn(`Registration failed: User with email ${userData.email} already exists`);
-      return null;
-    }
-    
-    // Hash password
-    const hashedPassword = await hash(userData.password, SALT_ROUNDS);
-    
-    // Generate verification token
-    const userId = nanoid();
-    const verificationToken = generateVerificationToken(userId);
-    
-    // Create organization if name is provided
-    let organizationId: string | null = null;
-    
-    if (userData.organizationName) {
-      const organization = await storage.createOrganization({
-        id: nanoid(),
-        name: userData.organizationName,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-      
-      organizationId = organization.id;
-      
-      // Add user as admin of organization
-      await storage.addOrganizationMember({
-        userId,
-        organizationId,
-        role: 'admin',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-    
-    // Create user
-    const newUser: InsertUser = {
+  // Create organization if requested
+  let orgId: string | null = null;
+  if (createOrganization && organizationName) {
+    orgId = await createNewOrganization(organizationName);
+  }
+
+  // Hash the password
+  const hashedPassword = await bcryptjs.hash(password, SALT_ROUNDS);
+  
+  // Generate verification token
+  const userId = nanoid();
+  const verificationToken = generateVerificationToken(userId, email);
+  
+  // Create user
+  const [newUser] = await db
+    .insert(users)
+    .values({
       id: userId,
-      email: userData.email,
+      email,
       password: hashedPassword,
-      firstName: userData.firstName || null,
-      lastName: userData.lastName || null,
-      role: 'user',
-      profileImageUrl: null,
+      firstName: firstName || null,
+      lastName: lastName || null,
+      organizationId: orgId,
       isVerified: false,
       verificationToken,
-      resetToken: null,
-      resetTokenExpiry: null,
-      organizationId,
+      role: orgId ? 'admin' : 'user',
       createdAt: new Date(),
       updatedAt: new Date()
-    };
-    
-    const user = await storage.upsertUser(newUser);
-    
-    // Send welcome email with verification link
-    await sendWelcomeEmail(
-      user.email,
-      user.firstName,
-      verificationToken
-    );
-    
-    // Return user (excluding password)
-    const { password: _, ...userWithoutPassword } = user;
-    
-    return {
-      user: userWithoutPassword,
-      verificationToken
-    };
-  } catch (error) {
-    console.error('Registration error:', error);
-    return null;
+    })
+    .returning();
+
+  // If user created an organization, add them as owner
+  if (orgId) {
+    await db
+      .insert(organizationMembers)
+      .values({
+        organizationId: orgId,
+        userId: userId,
+        role: 'owner',
+        inviteStatus: 'accepted'
+      });
   }
+
+  // Send verification email
+  await sendVerificationEmail(email, verificationToken, firstName);
+  
+  return {
+    user: newUser,
+    organizationId: orgId
+  };
 }
 
 /**
- * Verify a user's email using a verification token
- * @param token Email verification token
- * @returns True if verification successful, false otherwise
+ * Create a new organization
  */
-export async function verifyEmail(token: string): Promise<boolean> {
-  try {
-    // Find user by verification token
-    const user = await storage.getUserByVerificationToken(token);
-    
-    if (!user) {
-      console.warn('Email verification failed: Invalid or expired token');
-      return false;
-    }
-    
-    // Update user to mark as verified
-    await storage.upsertUser({
-      ...user,
-      isVerified: true,
-      verificationToken: null,
+async function createNewOrganization(name: string): Promise<string> {
+  const orgId = nanoid();
+  
+  await db
+    .insert(organizations)
+    .values({
+      id: orgId,
+      name,
+      plan: 'free',
+      createdAt: new Date(),
       updatedAt: new Date()
     });
+  
+  return orgId;
+}
+
+/**
+ * Login a user and generate tokens
+ */
+export async function loginUser(email: string, password: string) {
+  // Get user by email
+  const user = await getUserByEmail(email);
+  
+  if (!user) {
+    throw new Error('Invalid email or password');
+  }
+  
+  // Verify password
+  const isPasswordValid = await bcryptjs.compare(password, user.password || '');
+  if (!isPasswordValid) {
+    throw new Error('Invalid email or password');
+  }
+  
+  // Check if user is verified
+  if (!user.isVerified) {
+    throw new Error('Please verify your email address first');
+  }
+
+  // Generate JWT tokens
+  const accessToken = generateAccessToken(user.id, user.organizationId || null);
+  const refreshToken = generateRefreshToken(user.id);
+  
+  return {
+    user,
+    accessToken,
+    refreshToken
+  };
+}
+
+/**
+ * Get user by email
+ */
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email));
+  
+  return user;
+}
+
+/**
+ * Get user by ID
+ */
+export async function getUserById(id: string): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, id));
+  
+  return user;
+}
+
+/**
+ * Verify user email
+ */
+export async function verifyEmail(token: string) {
+  try {
+    // Verify token (payload has userId, email, type)
+    const payload = require('jsonwebtoken').verify(token, process.env.SESSION_SECRET);
     
-    return true;
+    if (!payload || payload.type !== 'verification') {
+      throw new Error('Invalid verification token');
+    }
+    
+    // Update user as verified
+    const [user] = await db
+      .update(users)
+      .set({
+        isVerified: true,
+        verificationToken: null,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(users.id, payload.userId),
+          eq(users.verificationToken, token)
+        )
+      )
+      .returning();
+    
+    if (!user) {
+      throw new Error('Verification failed. Invalid or expired token.');
+    }
+    
+    return user;
   } catch (error) {
     console.error('Email verification error:', error);
-    return false;
+    throw new Error('Verification failed. Invalid or expired token.');
   }
 }
 
 /**
- * Request a password reset for a user
- * @param email User's email address
- * @returns True if reset email sent, false otherwise
+ * Request password reset
  */
-export async function requestPasswordReset(email: string): Promise<boolean> {
-  try {
-    // Find user by email
-    const user = await storage.getUserByEmail(email);
-    
-    if (!user) {
-      console.warn(`Password reset request failed: User with email ${email} not found`);
-      return false;
-    }
-    
-    // Generate reset token
-    const resetToken = generatePasswordResetToken(user.id);
-    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
-    
-    // Update user with reset token
-    await storage.upsertUser({
-      ...user,
+export async function requestPasswordReset(email: string) {
+  const user = await getUserByEmail(email);
+  
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return true;
+  }
+  
+  // Generate reset token
+  const resetToken = generateResetToken(user.id, email);
+  
+  // Save token to user record
+  await db
+    .update(users)
+    .set({
       resetToken,
-      resetTokenExpiry,
+      resetTokenExpiry: new Date(Date.now() + 3600000), // 1 hour from now
       updatedAt: new Date()
-    });
-    
-    // Send password reset email
-    const emailSent = await sendPasswordResetEmail(user.email, resetToken);
-    
-    return emailSent;
-  } catch (error) {
-    console.error('Password reset request error:', error);
-    return false;
-  }
+    })
+    .where(eq(users.id, user.id));
+  
+  // Send reset email
+  await sendPasswordResetEmail(email, resetToken);
+  
+  return true;
 }
 
 /**
- * Reset a user's password using a reset token
- * @param token Password reset token
- * @param newPassword New password to set
- * @returns True if password reset successful, false otherwise
+ * Reset password with token
  */
-export async function resetPassword(token: string, newPassword: string): Promise<boolean> {
+export async function resetPassword(token: string, newPassword: string) {
   try {
-    // Find user by reset token
-    const user = await storage.getUserByResetToken(token);
+    // Verify token
+    const payload = require('jsonwebtoken').verify(token, process.env.SESSION_SECRET);
     
-    if (!user) {
-      console.warn('Password reset failed: Invalid or expired token');
-      return false;
+    if (!payload || payload.type !== 'reset') {
+      throw new Error('Invalid reset token');
     }
     
-    // Check if token is expired
-    const now = new Date();
-    if (user.resetTokenExpiry && user.resetTokenExpiry < now) {
-      console.warn('Password reset failed: Token has expired');
-      return false;
+    // Check if token is still valid in the database
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.id, payload.userId),
+          eq(users.resetToken, token)
+        )
+      );
+    
+    if (!user) {
+      throw new Error('Reset failed. Invalid or expired token.');
+    }
+    
+    // Check if token has expired
+    if (user.resetTokenExpiry && new Date(user.resetTokenExpiry) < new Date()) {
+      throw new Error('Reset token has expired');
     }
     
     // Hash new password
-    const hashedPassword = await hash(newPassword, SALT_ROUNDS);
+    const hashedPassword = await bcryptjs.hash(newPassword, SALT_ROUNDS);
     
     // Update user with new password
-    await storage.upsertUser({
-      ...user,
-      password: hashedPassword,
-      resetToken: null,
-      resetTokenExpiry: null,
-      updatedAt: new Date()
-    });
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, user.id));
     
     return true;
   } catch (error) {
     console.error('Password reset error:', error);
-    return false;
+    throw new Error('Password reset failed. Please try again.');
   }
 }
 
 /**
- * Change a user's password (when logged in)
- * @param userId User's ID
- * @param currentPassword Current password for verification
- * @param newPassword New password to set
- * @returns True if password change successful, false otherwise
+ * Invite user to organization
  */
-export async function changePassword(
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-): Promise<boolean> {
-  try {
-    // Get user
-    const user = await storage.getUser(userId);
+export async function inviteUserToOrganization(
+  email: string,
+  organizationId: string,
+  role: string = 'member',
+  inviterName: string,
+  organizationName: string
+) {
+  // Check if user already exists
+  let user = await getUserByEmail(email);
+  let userId: string;
+  
+  // If user doesn't exist, create a placeholder account
+  if (!user) {
+    userId = nanoid();
+    await db
+      .insert(users)
+      .values({
+        id: userId,
+        email,
+        isVerified: false,
+        role: 'user',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+  } else {
+    userId = user.id;
     
-    if (!user) {
-      console.warn(`Password change failed: User with ID ${userId} not found`);
-      return false;
+    // Check if user already belongs to this organization
+    const [membership] = await db
+      .select()
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.userId, userId),
+          eq(organizationMembers.organizationId, organizationId)
+        )
+      );
+    
+    if (membership) {
+      // If already a member, just update their role if needed
+      if (membership.role !== role) {
+        await db
+          .update(organizationMembers)
+          .set({ role, updatedAt: new Date() })
+          .where(eq(organizationMembers.id, membership.id));
+      }
+      
+      return { alreadyMember: true };
     }
-    
-    // Verify current password
-    if (!user.password) {
-      console.warn(`Password change failed: User with ID ${userId} has no password set`);
-      return false;
-    }
-    
-    const isPasswordValid = await compare(currentPassword, user.password);
-    
-    if (!isPasswordValid) {
-      console.warn(`Password change failed: Invalid current password for user with ID ${userId}`);
-      return false;
-    }
-    
-    // Hash new password
-    const hashedPassword = await hash(newPassword, SALT_ROUNDS);
-    
-    // Update user with new password
-    await storage.upsertUser({
-      ...user,
-      password: hashedPassword,
+  }
+  
+  // Generate invite token
+  const inviteToken = nanoid(32);
+  
+  // Create organization membership record
+  await db
+    .insert(organizationMembers)
+    .values({
+      organizationId,
+      userId,
+      role,
+      inviteStatus: 'pending',
+      inviteToken,
+      inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      createdAt: new Date(),
       updatedAt: new Date()
     });
-    
-    return true;
-  } catch (error) {
-    console.error('Password change error:', error);
-    return false;
+  
+  // Send invitation email
+  await sendOrganizationInviteEmail(
+    email,
+    inviteToken,
+    organizationName,
+    inviterName
+  );
+  
+  return { success: true };
+}
+
+/**
+ * Accept organization invitation
+ */
+export async function acceptOrganizationInvite(token: string, password?: string) {
+  // Find the invitation
+  const [membership] = await db
+    .select()
+    .from(organizationMembers)
+    .where(eq(organizationMembers.inviteToken, token));
+  
+  if (!membership) {
+    throw new Error('Invalid invitation token');
   }
+  
+  if (membership.inviteStatus !== 'pending') {
+    throw new Error('Invitation has already been processed');
+  }
+  
+  // Check if invite has expired
+  if (membership.inviteExpiry && new Date(membership.inviteExpiry) < new Date()) {
+    throw new Error('Invitation has expired');
+  }
+  
+  // Get the user
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, membership.userId));
+  
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  // If user doesn't have a password yet (new user), set their password
+  if (password && (!user.password || !user.isVerified)) {
+    const hashedPassword = await bcryptjs.hash(password, SALT_ROUNDS);
+    
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        isVerified: true,
+        organizationId: membership.organizationId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, user.id));
+  }
+  
+  // Update the membership
+  await db
+    .update(organizationMembers)
+    .set({
+      inviteStatus: 'accepted',
+      inviteToken: null,
+      inviteExpiry: null,
+      updatedAt: new Date()
+    })
+    .where(eq(organizationMembers.id, membership.id));
+  
+  // Generate tokens
+  const accessToken = generateAccessToken(user.id, membership.organizationId);
+  const refreshToken = generateRefreshToken(user.id);
+  
+  return {
+    user,
+    accessToken,
+    refreshToken
+  };
+}
+
+/**
+ * Get active organizations for a user
+ */
+export async function getUserOrganizations(userId: string) {
+  const memberships = await db
+    .select({
+      member: organizationMembers,
+      organization: organizations
+    })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.inviteStatus, 'accepted')
+      )
+    );
+  
+  return memberships.map(m => ({
+    ...m.organization,
+    role: m.member.role
+  }));
+}
+
+/**
+ * Change user's active organization
+ */
+export async function switchUserOrganization(userId: string, organizationId: string) {
+  // Check if user is a member of the organization
+  const [membership] = await db
+    .select()
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+        eq(organizationMembers.inviteStatus, 'accepted')
+      )
+    );
+  
+  if (!membership) {
+    throw new Error('User is not a member of this organization');
+  }
+  
+  // Update user's active organization
+  await db
+    .update(users)
+    .set({
+      organizationId,
+      updatedAt: new Date()
+    })
+    .where(eq(users.id, userId));
+  
+  // Generate new access token with the new organization context
+  const accessToken = generateAccessToken(userId, organizationId);
+  
+  return { accessToken };
 }

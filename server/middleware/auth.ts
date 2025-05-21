@@ -1,167 +1,207 @@
+/**
+ * Authentication Middleware
+ * 
+ * Handles JWT verification and enforces row-level security
+ */
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { db } from '../db';
+import { users, organizationMembers } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 import { verifyToken } from '../utils/jwt';
-import { storage } from '../storage';
-import { User } from '@shared/schema';
 
-/**
- * Express Request with User
- * Extends the Express Request type to include the user property
- */
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-      token?: string;
-    }
-  }
+// Interface for authenticated request with user information
+export interface AuthRequest extends Request {
+  user?: any;
+  userId?: string;
+  organizationId?: string;
 }
 
 /**
- * Extract the JWT token from the request
- * @param req Request object
- * @returns JWT token or null if not found
+ * Middleware to verify JWT access token
+ * Attaches user and organization info to the request
  */
-function extractToken(req: Request): string | null {
-  // Check Authorization header
+export const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // Extract token from authorization header
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7); // Remove 'Bearer ' prefix
-  }
   
-  // Check for token in cookies
-  if (req.cookies && req.cookies.token) {
-    return req.cookies.token;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required'
+    });
   }
-  
-  // Check for token in query parameters
-  if (req.query && req.query.token) {
-    return req.query.token as string;
-  }
-  
-  return null;
-}
 
-/**
- * Middleware to authenticate users via JWT
- * Sets req.user and req.token if authentication is successful
- */
-export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
+  const token = authHeader.split(' ')[1];
+  
+  // Verify the token
+  const payload = verifyToken(token);
+  
+  if (!payload || payload.type !== 'access') {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or expired token'
+    });
+  }
+
   try {
-    // Extract token from request
-    const token = extractToken(req);
-    
-    if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-    
-    // Verify token
-    const payload = verifyToken(token, 'access');
-    
-    if (!payload || !payload.userId) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-    
     // Get user from database
-    const user = await storage.getUser(payload.userId);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, payload.userId));
     
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not found'
+      });
     }
     
-    // Set user and token on request
+    // Attach user info to request
     req.user = user;
-    req.token = token;
-    
-    // Check if user belongs to organization and set organization data
-    if (user.organizationId) {
-      // For multi-tenant applications, we can attach organization data here
-      // This ensures data segregation by enforcing organization context
-      const organization = await storage.getOrganization(user.organizationId);
-      if (!organization) {
-        console.warn(`User ${user.id} has invalid organization ID: ${user.organizationId}`);
-      }
-    }
+    req.userId = user.id;
+    req.organizationId = payload.organizationId || user.organizationId;
     
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(401).json({ message: 'Authentication failed' });
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Authentication failed due to server error'
+    });
   }
 };
 
 /**
- * Middleware to check if a user has the required role
- * @param requiredRole Role required to access the resource
+ * Middleware to check if user has required role
+ * @param allowedRoles Array of roles that are allowed to access the resource
  */
-export const requireRole = (requiredRole: string) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const requireRole = (allowedRoles: string[]) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
     }
-    
-    const userRole = req.user.role || 'user';
-    
-    // Check if user has the required role
-    // Special case: 'admin' role has access to everything
-    if (userRole === 'admin' || userRole === requiredRole) {
-      return next();
+
+    // Get user's role in the organization
+    try {
+      const [membership] = await db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.userId, req.userId!),
+            eq(organizationMembers.organizationId, req.organizationId!)
+          )
+        );
+
+      if (!membership || !allowedRoles.includes(membership.role || 'member')) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Insufficient permissions'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Role check failed due to server error'
+      });
     }
-    
-    return res.status(403).json({ message: 'Insufficient permissions' });
   };
 };
 
 /**
- * Middleware to enforce data segregation at organization level
- * Ensures that users can only access data that belongs to their organization
+ * Middleware to enforce strict organization-level data access
+ * Ensures users can only access data within their organization
  */
-export const enforceOrganizationSegregation = () => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-    
-    // Organization ID from token
-    const userOrgId = req.user.organizationId;
-    
-    // Extract organization ID from request parameters
-    const paramOrgId = req.params.organizationId;
-    
-    // If there's an organization ID in the parameters, ensure it matches the user's organization
-    if (paramOrgId && userOrgId && paramOrgId !== userOrgId) {
-      return res.status(403).json({ 
-        message: 'Access denied. You do not have permission to access this organization\'s data'
+export const enforceOrganizationAccess = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user || !req.organizationId) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required'
+    });
+  }
+
+  try {
+    // Check if user belongs to the organization
+    const [membership] = await db
+      .select()
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.userId, req.userId!),
+          eq(organizationMembers.organizationId, req.organizationId)
+        )
+      );
+
+    if (!membership) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have access to this organization\'s data'
       });
     }
-    
+
     next();
-  };
+  } catch (error) {
+    console.error('Organization access check error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Organization access check failed'
+    });
+  }
 };
 
 /**
- * Middleware to enforce data segregation at user level
- * Ensures that users can only access their own data
+ * Middleware to restrict access to resource owner only
+ * @param resourceField Field name on the request parameters that contains the resource ID
+ * @param getOwnerId Function to retrieve the owner ID for the specified resource
  */
-export const enforceUserSegregation = () => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const restrictToOwnerOnly = (
+  resourceField: string,
+  getOwnerId: (resourceId: string | number) => Promise<string>
+) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-    
-    // User ID from token
-    const tokenUserId = req.user.id;
-    
-    // Extract user ID from request parameters
-    const paramUserId = req.params.userId;
-    
-    // If there's a user ID in the parameters, ensure it matches the authenticated user's ID
-    if (paramUserId && paramUserId !== tokenUserId) {
-      return res.status(403).json({ 
-        message: 'Access denied. You do not have permission to access another user\'s data'
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
       });
     }
+
+    const resourceId = req.params[resourceField];
     
-    next();
+    if (!resourceId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Resource ID (${resourceField}) is required`
+      });
+    }
+
+    try {
+      // Get the owner ID of the resource
+      const ownerId = await getOwnerId(resourceId);
+      
+      // Check if the current user is the owner
+      if (ownerId !== req.userId) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'You do not have permission to access this resource'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Owner check error:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Owner check failed due to server error'
+      });
+    }
   };
 };

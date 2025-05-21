@@ -1,117 +1,97 @@
+/**
+ * JWT Utility Functions
+ * 
+ * Handles token generation and verification for authentication
+ */
 import jwt from 'jsonwebtoken';
-import { nanoid } from 'nanoid';
 
-// Secret keys for token signing
-const accessTokenSecret = process.env.SESSION_SECRET || 'UNSAFE_DEVELOPMENT_SECRET';
-const refreshTokenSecret = accessTokenSecret + '_refresh';
-const verificationTokenSecret = accessTokenSecret + '_verification';
-const passwordResetTokenSecret = accessTokenSecret + '_reset';
+// Secret key for signing tokens - use SESSION_SECRET env var
+const JWT_SECRET = process.env.SESSION_SECRET || 'default-jwt-secret';
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = '15m';  // 15 minutes
 const REFRESH_TOKEN_EXPIRY = '7d';  // 7 days
-const VERIFICATION_TOKEN_EXPIRY = '3d';  // 3 days
-const PASSWORD_RESET_TOKEN_EXPIRY = '1h';  // 1 hour
 
-// Token payload interface
-export interface TokenPayload {
-  userId: string;
-  email?: string;
-  role?: string;
-  organizationId?: string;
+/**
+ * Generate a JWT access token for authenticated users
+ * @param userId User ID to encode in the token
+ * @param organizationId Organization ID to encode in the token
+ * @returns The signed JWT access token
+ */
+export function generateAccessToken(userId: string, organizationId: string | null = null) {
+  return jwt.sign(
+    { 
+      userId,
+      organizationId,
+      type: 'access' 
+    },
+    JWT_SECRET,
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
+  );
 }
 
 /**
- * Generate an access token for authenticated requests
- * @param payload User data to include in the token
- * @returns Signed JWT access token
+ * Generate a refresh token with longer expiration
+ * @param userId User ID to encode in the token
+ * @returns The signed JWT refresh token
  */
-export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, accessTokenSecret, {
-    expiresIn: ACCESS_TOKEN_EXPIRY,
-  });
+export function generateRefreshToken(userId: string) {
+  return jwt.sign(
+    { 
+      userId,
+      type: 'refresh' 
+    },
+    JWT_SECRET,
+    { expiresIn: REFRESH_TOKEN_EXPIRY }
+  );
 }
 
 /**
- * Generate a refresh token for obtaining new access tokens
- * @param payload User data to include in the token
- * @returns Signed JWT refresh token
+ * Verify a JWT token and return its payload
+ * @param token The token to verify
+ * @returns The decoded token payload or null if invalid
  */
-export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, refreshTokenSecret, {
-    expiresIn: REFRESH_TOKEN_EXPIRY,
-  });
-}
-
-/**
- * Generate an email verification token
- * @param userId User ID to include in the token
- * @returns Signed JWT verification token
- */
-export function generateVerificationToken(userId: string): string {
-  return jwt.sign({ userId, tokenId: nanoid(8) }, verificationTokenSecret, {
-    expiresIn: VERIFICATION_TOKEN_EXPIRY,
-  });
-}
-
-/**
- * Generate a password reset token
- * @param userId User ID to include in the token
- * @returns Signed JWT password reset token
- */
-export function generatePasswordResetToken(userId: string): string {
-  return jwt.sign({ userId, tokenId: nanoid(8) }, passwordResetTokenSecret, {
-    expiresIn: PASSWORD_RESET_TOKEN_EXPIRY,
-  });
-}
-
-/**
- * Verify a token and extract its payload
- * @param token JWT token to verify
- * @param type Type of token (access, refresh, verification, reset)
- * @returns Token payload if valid, null otherwise
- */
-export function verifyToken(
-  token: string,
-  type: 'access' | 'refresh' | 'verification' | 'reset'
-): any {
+export function verifyToken(token: string): any {
   try {
-    let secret;
-    
-    switch (type) {
-      case 'access':
-        secret = accessTokenSecret;
-        break;
-      case 'refresh':
-        secret = refreshTokenSecret;
-        break;
-      case 'verification':
-        secret = verificationTokenSecret;
-        break;
-      case 'reset':
-        secret = passwordResetTokenSecret;
-        break;
-      default:
-        return null;
-    }
-    
-    return jwt.verify(token, secret);
+    return jwt.verify(token, JWT_SECRET);
   } catch (error) {
-    console.error(`Token verification error (${type}):`, error);
+    console.error('Token verification failed:', error);
     return null;
   }
 }
 
 /**
- * Decode a token without verification (useful for debugging)
- * @param token JWT token to decode
- * @returns Decoded token payload
+ * Generate email verification token
+ * @param userId User ID to encode in token
+ * @param email Email address to verify
+ * @returns The signed verification token
  */
-export function decodeToken(token: string): any {
-  try {
-    return jwt.decode(token);
-  } catch (error) {
-    console.error('Token decode error:', error);
-    return null;
-  }
+export function generateVerificationToken(userId: string, email: string) {
+  return jwt.sign(
+    { 
+      userId, 
+      email,
+      type: 'verification' 
+    },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+}
+
+/**
+ * Generate password reset token
+ * @param userId User ID for reset
+ * @param email Email address for reset
+ * @returns The signed reset token
+ */
+export function generateResetToken(userId: string, email: string) {
+  return jwt.sign(
+    { 
+      userId, 
+      email,
+      type: 'reset' 
+    },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
 }

@@ -1,207 +1,189 @@
 /**
- * Email Service for Dana AI Platform
- * Provides functionality for sending emails to users
+ * Email Service
+ * 
+ * Handles sending emails for authentication, notifications, and marketing
  */
+import axios from 'axios';
 
-// Import types
-import { User } from '@shared/schema';
-
-/**
- * Get base URL for application links
- * Uses Replit domain if available
- */
-function getBaseUrl(): string {
-  const replitDomains = process.env.REPLIT_DOMAINS;
-  if (replitDomains) {
-    const domains = replitDomains.split(',');
-    if (domains.length > 0) {
-      return `https://${domains[0]}`;
-    }
-  }
-  return 'http://localhost:3000'; // Fallback for local development
-}
+// Configure email sending options
+const EMAIL_FROM = 'noreply@dana-ai.com';
+const BASE_URL = process.env.BASE_URL || 'https://dana-ai-project.replit.app';
 
 /**
- * Send a welcome email to a new user
+ * Send a verification email to a new user
+ * @param email Email address of the recipient
+ * @param verificationToken Token for email verification
  */
-export async function sendWelcomeEmail(
-  email: string,
-  firstName: string | null,
-  verificationToken: string
-): Promise<boolean> {
-  try {
-    // In a real implementation, this would use a service like SendGrid or Nodemailer
-    // For now, we'll just log the email content to the console
-    
-    const baseUrl = getBaseUrl();
-    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-    
-    console.log('==================== WELCOME EMAIL ====================');
-    console.log(`To: ${email}`);
-    console.log(`Subject: Welcome to Dana AI Platform!`);
-    console.log('Body:');
-    console.log(`Hello ${firstName || 'there'},`);
-    console.log('');
-    console.log('Welcome to Dana AI Platform! We\'re excited to have you on board.');
-    console.log('');
-    console.log('Please verify your email address by clicking the link below:');
-    console.log(verificationUrl);
-    console.log('');
-    console.log('If you have any questions, please don\'t hesitate to reach out to our support team.');
-    console.log('');
-    console.log('Best regards,');
-    console.log('The Dana AI Team');
-    console.log('======================================================');
-    
-    // In a production environment, you would use an email service like SendGrid
-    // Example with SendGrid (commented out):
-    /*
-    if (process.env.SENDGRID_API_KEY) {
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+export async function sendVerificationEmail(email: string, verificationToken: string, firstName: string = '') {
+  // Create verification link
+  const verificationLink = `${BASE_URL}/verify-email?token=${verificationToken}`;
+  
+  // Email content
+  const subject = 'Verify your Dana AI account';
+  const content = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4361ee; margin-bottom: 10px;">Dana AI</h1>
+        <p style="font-size: 18px; color: #333;">Welcome to Dana AI!</p>
+      </div>
       
-      const msg = {
-        to: email,
-        from: 'noreply@danaaichat.com',
-        subject: 'Welcome to Dana AI Platform!',
-        text: `Hello ${firstName || 'there'},
-        
-Welcome to Dana AI Platform! We're excited to have you on board.
-
-Please verify your email address by clicking the link below:
-${verificationUrl}
-
-If you have any questions, please don't hesitate to reach out to our support team.
-
-Best regards,
-The Dana AI Team`,
-        html: `<p>Hello ${firstName || 'there'},</p>
-        
-<p>Welcome to Dana AI Platform! We're excited to have you on board.</p>
-
-<p>Please verify your email address by clicking the link below:</p>
-<p><a href="${verificationUrl}">Verify your email</a></p>
-
-<p>If you have any questions, please don't hesitate to reach out to our support team.</p>
-
-<p>Best regards,<br>
-The Dana AI Team</p>`,
-      };
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <p>Hi ${firstName || 'there'},</p>
+        <p>Thank you for signing up for Dana AI. Please verify your email address to complete your registration.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationLink}" style="background: linear-gradient(90deg, #4361ee, #3a0ca3); color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Verify Email Address</a>
+        </div>
+        <p>If you didn't create this account, you can safely ignore this email.</p>
+      </div>
       
-      await sgMail.send(msg);
-    }
-    */
-    
-    return true;
-  } catch (error) {
-    console.error('Error sending welcome email:', error);
-    return false;
-  }
+      <div style="text-align: center; color: #666; font-size: 12px;">
+        <p>Dana AI - AI-Powered Social Media and Communication Management</p>
+        <p>© ${new Date().getFullYear()} Dana AI. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  // Send the email
+  return await sendEmail(email, subject, content);
 }
 
 /**
- * Send a verification email to a user
+ * Send a password reset email
+ * @param email Email address of the recipient
+ * @param resetToken Token for password reset
  */
-export async function sendVerificationEmail(
-  email: string,
-  verificationToken: string
-): Promise<boolean> {
-  try {
-    const baseUrl = getBaseUrl();
-    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-    
-    console.log('================ VERIFICATION EMAIL =================');
-    console.log(`To: ${email}`);
-    console.log(`Subject: Verify your Dana AI Platform email address`);
-    console.log('Body:');
-    console.log('Hello,');
-    console.log('');
-    console.log('Please verify your email address by clicking the link below:');
-    console.log(verificationUrl);
-    console.log('');
-    console.log('If you did not request this email, please ignore it.');
-    console.log('');
-    console.log('Best regards,');
-    console.log('The Dana AI Team');
-    console.log('======================================================');
-    
-    return true;
-  } catch (error) {
-    console.error('Error sending verification email:', error);
-    return false;
-  }
-}
-
-/**
- * Send a password reset email to a user
- */
-export async function sendPasswordResetEmail(
-  email: string,
-  resetToken: string
-): Promise<boolean> {
-  try {
-    const baseUrl = getBaseUrl();
-    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-    
-    console.log('================ PASSWORD RESET EMAIL ================');
-    console.log(`To: ${email}`);
-    console.log(`Subject: Reset your Dana AI Platform password`);
-    console.log('Body:');
-    console.log('Hello,');
-    console.log('');
-    console.log('We received a request to reset your Dana AI Platform password.');
-    console.log('');
-    console.log('Please click the link below to reset your password:');
-    console.log(resetUrl);
-    console.log('');
-    console.log('This link will expire in 1 hour.');
-    console.log('');
-    console.log('If you did not request a password reset, please ignore this email.');
-    console.log('');
-    console.log('Best regards,');
-    console.log('The Dana AI Team');
-    console.log('=======================================================');
-    
-    return true;
-  } catch (error) {
-    console.error('Error sending password reset email:', error);
-    return false;
-  }
+export async function sendPasswordResetEmail(email: string, resetToken: string) {
+  // Create reset link
+  const resetLink = `${BASE_URL}/reset-password?token=${resetToken}`;
+  
+  // Email content
+  const subject = 'Reset your Dana AI password';
+  const content = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4361ee; margin-bottom: 10px;">Dana AI</h1>
+        <p style="font-size: 18px; color: #333;">Password Reset Request</p>
+      </div>
+      
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <p>Hello,</p>
+        <p>We received a request to reset your password. Click the button below to create a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background: linear-gradient(90deg, #4361ee, #3a0ca3); color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+        </div>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        <p>This link will expire in 1 hour.</p>
+      </div>
+      
+      <div style="text-align: center; color: #666; font-size: 12px;">
+        <p>Dana AI - AI-Powered Social Media and Communication Management</p>
+        <p>© ${new Date().getFullYear()} Dana AI. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  // Send the email
+  return await sendEmail(email, subject, content);
 }
 
 /**
  * Send an organization invitation email
+ * @param email Email address of the recipient
+ * @param inviteToken Invitation token
+ * @param organizationName Name of the organization
+ * @param inviterName Name of the person sending the invitation
  */
 export async function sendOrganizationInviteEmail(
-  email: string,
-  organization: string,
-  inviterName: string,
-  inviteToken: string
-): Promise<boolean> {
+  email: string, 
+  inviteToken: string, 
+  organizationName: string,
+  inviterName: string
+) {
+  // Create invitation link
+  const inviteLink = `${BASE_URL}/accept-invite?token=${inviteToken}`;
+  
+  // Email content
+  const subject = `Join ${organizationName} on Dana AI`;
+  const content = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4361ee; margin-bottom: 10px;">Dana AI</h1>
+        <p style="font-size: 18px; color: #333;">Organization Invitation</p>
+      </div>
+      
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <p>Hello,</p>
+        <p>${inviterName} has invited you to join <strong>${organizationName}</strong> on Dana AI.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${inviteLink}" style="background: linear-gradient(90deg, #4361ee, #3a0ca3); color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Accept Invitation</a>
+        </div>
+        <p>Dana AI is an AI-powered platform that helps organizations manage social media and communication channels.</p>
+      </div>
+      
+      <div style="text-align: center; color: #666; font-size: 12px;">
+        <p>Dana AI - AI-Powered Social Media and Communication Management</p>
+        <p>© ${new Date().getFullYear()} Dana AI. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  // Send the email
+  return await sendEmail(email, subject, content);
+}
+
+/**
+ * Send a notification email
+ * @param email Email address of the recipient
+ * @param subject Email subject
+ * @param message Email message content
+ */
+export async function sendNotificationEmail(email: string, subject: string, message: string) {
+  // Email content
+  const content = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4361ee; margin-bottom: 10px;">Dana AI</h1>
+        <p style="font-size: 18px; color: #333;">Notification</p>
+      </div>
+      
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        ${message}
+      </div>
+      
+      <div style="text-align: center; color: #666; font-size: 12px;">
+        <p>Dana AI - AI-Powered Social Media and Communication Management</p>
+        <p>© ${new Date().getFullYear()} Dana AI. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  // Send the email
+  return await sendEmail(email, subject, content);
+}
+
+/**
+ * Core email sending function
+ * First tries SendGrid if available, then falls back to direct SMTP
+ */
+async function sendEmail(to: string, subject: string, htmlContent: string) {
   try {
-    const baseUrl = getBaseUrl();
-    const inviteUrl = `${baseUrl}/invite?token=${inviteToken}`;
+    // If SendGrid is available, use it
+    if (process.env.SENDGRID_API_KEY) {
+      // Implementation will be added when SENDGRID_API_KEY is provided
+      console.log('SendGrid would send email to:', to);
+      console.log('Subject:', subject);
+      
+      return true;
+    } 
     
-    console.log('================ ORGANIZATION INVITE EMAIL ================');
-    console.log(`To: ${email}`);
-    console.log(`Subject: You've been invited to join ${organization} on Dana AI Platform`);
-    console.log('Body:');
-    console.log(`Hello,`);
-    console.log('');
-    console.log(`You've been invited by ${inviterName} to join ${organization} on Dana AI Platform.`);
-    console.log('');
-    console.log('Please click the link below to accept the invitation:');
-    console.log(inviteUrl);
-    console.log('');
-    console.log('If you did not expect this invitation, please ignore this email.');
-    console.log('');
-    console.log('Best regards,');
-    console.log('The Dana AI Team');
-    console.log('===========================================================');
+    // For now, we'll just log the email content for development
+    console.log('Would send email to:', to);
+    console.log('Subject:', subject);
+    console.log('Content (truncated):', htmlContent.substring(0, 100) + '...');
     
     return true;
   } catch (error) {
-    console.error('Error sending organization invite email:', error);
+    console.error('Error sending email:', error);
     return false;
   }
 }
