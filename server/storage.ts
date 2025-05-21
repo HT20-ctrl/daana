@@ -16,7 +16,13 @@ import {
   type InsertKnowledgeBase,
   analytics,
   type Analytics,
-  type InsertAnalytics
+  type InsertAnalytics,
+  organizations,
+  type Organization,
+  type InsertOrganization,
+  organizationMembers,
+  type OrganizationMember,
+  type InsertOrganizationMember
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -25,14 +31,29 @@ import { eq, and, desc } from "drizzle-orm";
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Organization operations
+  getOrganization(id: string): Promise<Organization | undefined>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization>;
+  
+  // Organization membership operations
+  getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]>;
+  getOrganizationsByUserId(userId: string): Promise<Organization[]>;
+  addOrganizationMember(member: InsertOrganizationMember): Promise<OrganizationMember>;
+  updateOrganizationMember(id: number, data: Partial<InsertOrganizationMember>): Promise<OrganizationMember>;
+  removeOrganizationMember(id: number): Promise<boolean>;
   
   // Platform operations
   getPlatformsByUserId(userId: string): Promise<Platform[]>;
   getPlatformById(id: number): Promise<Platform | undefined>;
   createPlatform(platform: InsertPlatform): Promise<Platform>;
   updatePlatform(id: number, platformData: Partial<InsertPlatform>): Promise<Platform>;
-  deletePlatform(id: number): Promise<boolean>; // Add delete platform functionality
+  deletePlatform(id: number): Promise<boolean>;
   
   // Conversation operations
   getConversationsByUserId(userId: string): Promise<Conversation[]>;
