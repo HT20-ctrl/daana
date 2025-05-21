@@ -49,6 +49,7 @@ export const platforms = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: varchar("user_id").references(() => users.id).notNull(),
+    organizationId: varchar("organization_id").references(() => organizations.id),
     name: varchar("name").notNull(), // e.g., "facebook", "instagram", "whatsapp"
     displayName: varchar("display_name").notNull(),
     accessToken: text("access_token"),
@@ -63,6 +64,10 @@ export const platforms = pgTable(
     return {
       // Index for faster queries by userId - most common query
       userIdIdx: index("platforms_user_id_idx").on(table.userId),
+      // Index for organization filtering - essential for multi-tenant security
+      orgIdIdx: index("platforms_org_id_idx").on(table.organizationId),
+      // Compound index for user+organization filtering - optimizes our most common security query
+      userOrgIdx: index("platforms_user_org_idx").on(table.userId, table.organizationId),
       // Index for faster platform name lookup
       nameIdx: index("platforms_name_idx").on(table.name),
       // Index for finding connected platforms quickly
@@ -76,6 +81,7 @@ export const conversations = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: varchar("user_id").references(() => users.id).notNull(),
+    organizationId: varchar("organization_id").references(() => organizations.id),
     platformId: integer("platform_id").references(() => platforms.id),
     customerName: varchar("customer_name").notNull(),
     customerAvatar: varchar("customer_avatar"),
@@ -89,6 +95,10 @@ export const conversations = pgTable(
     return {
       // Index for faster queries by userId - most common query pattern
       userIdIdx: index("conversations_user_id_idx").on(table.userId),
+      // Index for organization filtering - critical for multi-tenant security
+      orgIdIdx: index("conversations_org_id_idx").on(table.organizationId),
+      // Compound index for user+organization filtering - optimizes our most common security query
+      userOrgIdx: index("conversations_user_org_idx").on(table.userId, table.organizationId),
       // Index for platform filtering - common in dashboard views
       platformIdIdx: index("conversations_platform_id_idx").on(table.platformId),
       // Compound index for finding active conversations for a user

@@ -25,7 +25,7 @@ import {
   type InsertOrganizationMember
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -1194,21 +1194,33 @@ export class DatabaseStorage implements IStorage {
   
   async getConversationsByUserAndOrganization(userId: string, organizationId: string): Promise<Conversation[]> {
     try {
-      return await db
+      // First try with the organization filter
+      const result = await db
         .select()
         .from(conversations)
         .where(
           and(
             eq(conversations.userId, userId),
-            // Either the conversation belongs to this organization or it doesn't have an organization ID
-            // This ensures backward compatibility with existing data
-            or(
-              eq(conversations.organizationId, organizationId),
-              isNull(conversations.organizationId)
-            )
+            eq(conversations.organizationId, organizationId)
           )
         )
         .orderBy(desc(conversations.lastMessageAt));
+      
+      // For backward compatibility, also get conversations without an organization
+      // but only if they belong to this user
+      const legacyResult = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.userId, userId),
+            sql`${conversations.organizationId} IS NULL`
+          )
+        )
+        .orderBy(desc(conversations.lastMessageAt));
+      
+      // Combine both results
+      return [...result, ...legacyResult];
     } catch (error) {
       console.error("Error fetching conversations by organization:", error);
       throw new Error(`Failed to get conversations: ${error instanceof Error ? error.message : String(error)}`);
