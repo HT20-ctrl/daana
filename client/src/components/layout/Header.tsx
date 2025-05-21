@@ -139,8 +139,15 @@ export default function Header({ user }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between p-4">
-        {/* Mobile view shows the app name */}
-        <h1 className="text-xl font-semibold text-gray-900 md:hidden">Dana AI</h1>
+        {/* Mobile view shows the app name with gradient styling */}
+        <div className="flex items-center md:hidden">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 p-[2px] overflow-hidden group">
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-800/80 to-indigo-900/80 backdrop-blur-xl flex items-center justify-center">
+              <span className="text-white font-bold text-lg">D</span>
+            </div>
+          </div>
+          <h1 className="ml-2 text-xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 bg-clip-text text-transparent">Dana AI</h1>
+        </div>
         
         {/* Search bar - hidden on small screens */}
         <div className="hidden md:block flex-1 max-w-3xl mx-auto px-4">

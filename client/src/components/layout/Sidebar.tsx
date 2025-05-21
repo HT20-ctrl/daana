@@ -127,10 +127,12 @@ export default function Sidebar({ user }: SidebarProps) {
       {/* Logo and branding */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center">
-          <div className="flex-shrink-0 w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xl font-bold">D</span>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 p-[2px] overflow-hidden group transform transition-all duration-300 hover:scale-110">
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-800/80 to-indigo-900/80 backdrop-blur-xl flex items-center justify-center transition group-hover:from-blue-700/80 group-hover:to-indigo-800/80">
+              <span className="text-white font-bold text-xl group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cyan-300 group-hover:to-blue-300 transition-all duration-300">D</span>
+            </div>
           </div>
-          <h1 className="ml-3 text-xl font-semibold text-gray-900">Dana AI</h1>
+          <h1 className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 bg-clip-text text-transparent">Dana AI</h1>
         </div>
       </div>
 
