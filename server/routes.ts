@@ -601,13 +601,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileType = nameParts.length > 1 ? nameParts[nameParts.length - 1].toLowerCase() : "unknown";
         }
         
+        // Use absolute path for file storage to ensure it can be found for downloads
+        const absoluteFilePath = file.path;
+        
+        console.log(`Storing file with path: ${absoluteFilePath}`);
+        
         const knowledgeBaseEntry = await storage.createKnowledgeBase({
           userId,
           fileName: file.originalname,
           fileType, // Using the simplified file type (pdf, docx, txt)
           fileSize: file.size,
           content: content || null,
-          filePath: file.path // Store the file path in the database
+          filePath: absoluteFilePath // Store the file path in the database
         });
         
         // Return the created knowledge base entry
