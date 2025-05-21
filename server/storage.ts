@@ -745,7 +745,7 @@ export class DatabaseStorage implements IStorage {
         .from(platforms)
         .where(eq(platforms.id, id));
       return platform;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching platform by ID:", error);
       throw new Error(`Failed to get platform: ${error.message}`);
     }
@@ -795,7 +795,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       return updatedPlatform;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating platform:", error);
       throw new Error(`Failed to update platform: ${error.message}`);
     }
@@ -1011,7 +1011,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       
       return updatedAnalytics;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error incrementing total messages:", error);
       throw new Error(`Failed to increment total messages: ${error.message}`);
     }
