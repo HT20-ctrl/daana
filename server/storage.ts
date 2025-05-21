@@ -18,6 +18,8 @@ import {
   type Analytics,
   type InsertAnalytics
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -120,6 +122,7 @@ export class MemStorage implements IStorage {
       accessToken: null,
       refreshToken: null,
       tokenExpiry: null,
+      metadata: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -134,6 +137,7 @@ export class MemStorage implements IStorage {
       accessToken: null,
       refreshToken: null,
       tokenExpiry: null,
+      metadata: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -148,6 +152,7 @@ export class MemStorage implements IStorage {
       accessToken: null,
       refreshToken: null,
       tokenExpiry: null,
+      metadata: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -683,4 +688,412 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+/**
+ * Database Storage implementation
+ * Handles all database interactions using Drizzle ORM
+ */
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      throw new Error(`Failed to get user: ${error.message}`);
+    }
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            ...userData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error) {
+      console.error("Error upserting user:", error);
+      throw new Error(`Failed to upsert user: ${error.message}`);
+    }
+  }
+
+  // Platform operations
+  async getPlatformsByUserId(userId: string): Promise<Platform[]> {
+    try {
+      return await db
+        .select()
+        .from(platforms)
+        .where(eq(platforms.userId, userId));
+    } catch (error) {
+      console.error("Error fetching platforms by user ID:", error);
+      throw new Error(`Failed to get platforms: ${error.message}`);
+    }
+  }
+
+  async getPlatformById(id: number): Promise<Platform | undefined> {
+    try {
+      const [platform] = await db
+        .select()
+        .from(platforms)
+        .where(eq(platforms.id, id));
+      return platform;
+    } catch (error) {
+      console.error("Error fetching platform by ID:", error);
+      throw new Error(`Failed to get platform: ${error.message}`);
+    }
+  }
+
+  async createPlatform(platformData: InsertPlatform): Promise<Platform> {
+    try {
+      const platformWithDefaults = {
+        ...platformData,
+        metadata: platformData.metadata || null
+      };
+      
+      const [platform] = await db
+        .insert(platforms)
+        .values(platformWithDefaults)
+        .returning();
+      return platform;
+    } catch (error: any) {
+      console.error("Error creating platform:", error);
+      throw new Error(`Failed to create platform: ${error.message}`);
+    }
+  }
+
+  async updatePlatform(
+    id: number,
+    platformData: Partial<InsertPlatform>
+  ): Promise<Platform> {
+    try {
+      // Special handling for disconnection
+      if (platformData.isConnected === false) {
+        platformData.accessToken = null;
+        platformData.refreshToken = null;
+        platformData.tokenExpiry = null;
+      }
+
+      const [updatedPlatform] = await db
+        .update(platforms)
+        .set({
+          ...platformData,
+          updatedAt: new Date(),
+        })
+        .where(eq(platforms.id, id))
+        .returning();
+
+      if (!updatedPlatform) {
+        throw new Error(`Platform with ID ${id} not found`);
+      }
+
+      return updatedPlatform;
+    } catch (error) {
+      console.error("Error updating platform:", error);
+      throw new Error(`Failed to update platform: ${error.message}`);
+    }
+  }
+
+  async deletePlatform(id: number): Promise<boolean> {
+    try {
+      // Instead of deleting, we'll update the platform to disconnect it
+      await this.updatePlatform(id, {
+        isConnected: false,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error disconnecting platform:", error);
+      return false;
+    }
+  }
+
+  // Conversation operations
+  async getConversationsByUserId(userId: string): Promise<Conversation[]> {
+    try {
+      return await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.userId, userId))
+        .orderBy(desc(conversations.lastMessageAt));
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      throw new Error(`Failed to get conversations: ${error.message}`);
+    }
+  }
+
+  async getConversationById(id: number): Promise<Conversation | undefined> {
+    try {
+      const [conversation] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.id, id));
+      return conversation;
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      throw new Error(`Failed to get conversation: ${error.message}`);
+    }
+  }
+
+  async createConversation(conversationData: InsertConversation): Promise<Conversation> {
+    try {
+      const [conversation] = await db
+        .insert(conversations)
+        .values(conversationData)
+        .returning();
+      return conversation;
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      throw new Error(`Failed to create conversation: ${error.message}`);
+    }
+  }
+
+  // Message operations
+  async getMessagesByConversationId(conversationId: number): Promise<Message[]> {
+    try {
+      return await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId))
+        .orderBy(messages.createdAt);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      throw new Error(`Failed to get messages: ${error.message}`);
+    }
+  }
+
+  async createMessage(messageData: InsertMessage): Promise<Message> {
+    try {
+      const [message] = await db.insert(messages).values(messageData).returning();
+
+      // Update conversation with last message
+      await db
+        .update(conversations)
+        .set({
+          lastMessage: messageData.content,
+          lastMessageAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(conversations.id, messageData.conversationId));
+
+      // Update analytics
+      await this.incrementTotalMessages(messageData.conversationId.toString());
+      if (messageData.isAiGenerated) {
+        await this.incrementAiResponses(messageData.conversationId.toString());
+      } else if (!messageData.isFromCustomer) {
+        await this.incrementManualResponses(messageData.conversationId.toString());
+      }
+
+      return message;
+    } catch (error) {
+      console.error("Error creating message:", error);
+      throw new Error(`Failed to create message: ${error.message}`);
+    }
+  }
+
+  // Knowledge Base operations
+  async getKnowledgeBaseByUserId(userId: string): Promise<KnowledgeBase[]> {
+    try {
+      return await db
+        .select()
+        .from(knowledgeBase)
+        .where(eq(knowledgeBase.userId, userId))
+        .orderBy(desc(knowledgeBase.updatedAt));
+    } catch (error) {
+      console.error("Error fetching knowledge base items:", error);
+      throw new Error(`Failed to get knowledge base: ${error.message}`);
+    }
+  }
+
+  async getKnowledgeBaseById(id: number): Promise<KnowledgeBase | undefined> {
+    try {
+      const [item] = await db
+        .select()
+        .from(knowledgeBase)
+        .where(eq(knowledgeBase.id, id));
+      return item;
+    } catch (error) {
+      console.error("Error fetching knowledge base item:", error);
+      throw new Error(`Failed to get knowledge base item: ${error.message}`);
+    }
+  }
+
+  async createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase> {
+    try {
+      const [item] = await db
+        .insert(knowledgeBase)
+        .values(knowledgeBaseItem)
+        .returning();
+      return item;
+    } catch (error) {
+      console.error("Error creating knowledge base item:", error);
+      throw new Error(`Failed to create knowledge base item: ${error.message}`);
+    }
+  }
+
+  async updateKnowledgeBase(id: number, data: Partial<KnowledgeBase>): Promise<KnowledgeBase> {
+    try {
+      const [updatedItem] = await db
+        .update(knowledgeBase)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(knowledgeBase.id, id))
+        .returning();
+
+      if (!updatedItem) {
+        throw new Error(`Knowledge base item with ID ${id} not found`);
+      }
+
+      return updatedItem;
+    } catch (error) {
+      console.error("Error updating knowledge base item:", error);
+      throw new Error(`Failed to update knowledge base item: ${error.message}`);
+    }
+  }
+
+  // Analytics operations
+  async getAnalyticsByUserId(userId: string): Promise<Analytics | undefined> {
+    try {
+      const [analyticsItem] = await db
+        .select()
+        .from(analytics)
+        .where(eq(analytics.userId, userId))
+        .orderBy(desc(analytics.date))
+        .limit(1);
+      
+      return analyticsItem;
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      throw new Error(`Failed to get analytics: ${error.message}`);
+    }
+  }
+
+  async incrementTotalMessages(userId: string): Promise<Analytics> {
+    try {
+      let analyticsItem = await this.getAnalyticsByUserId(userId);
+      
+      if (!analyticsItem) {
+        // Create new analytics record if none exists
+        const [newAnalytics] = await db
+          .insert(analytics)
+          .values({
+            userId,
+            totalMessages: 1,
+            aiResponses: 0,
+            manualResponses: 0,
+            sentimentScore: 0,
+            date: new Date(),
+          })
+          .returning();
+        
+        return newAnalytics;
+      }
+      
+      // Update existing analytics
+      const [updatedAnalytics] = await db
+        .update(analytics)
+        .set({
+          totalMessages: analyticsItem.totalMessages + 1,
+          date: new Date(),
+        })
+        .where(eq(analytics.id, analyticsItem.id))
+        .returning();
+      
+      return updatedAnalytics;
+    } catch (error) {
+      console.error("Error incrementing total messages:", error);
+      throw new Error(`Failed to increment total messages: ${error.message}`);
+    }
+  }
+
+  async incrementAiResponses(userId: string): Promise<Analytics> {
+    try {
+      let analyticsItem = await this.getAnalyticsByUserId(userId);
+      
+      if (!analyticsItem) {
+        // Create new analytics record if none exists
+        const [newAnalytics] = await db
+          .insert(analytics)
+          .values({
+            userId,
+            totalMessages: 1,
+            aiResponses: 1,
+            manualResponses: 0,
+            sentimentScore: 0,
+            date: new Date(),
+          })
+          .returning();
+        
+        return newAnalytics;
+      }
+      
+      // Update existing analytics
+      const [updatedAnalytics] = await db
+        .update(analytics)
+        .set({
+          aiResponses: analyticsItem.aiResponses + 1,
+          date: new Date(),
+        })
+        .where(eq(analytics.id, analyticsItem.id))
+        .returning();
+      
+      return updatedAnalytics;
+    } catch (error) {
+      console.error("Error incrementing AI responses:", error);
+      throw new Error(`Failed to increment AI responses: ${error.message}`);
+    }
+  }
+
+  async incrementManualResponses(userId: string): Promise<Analytics> {
+    try {
+      let analyticsItem = await this.getAnalyticsByUserId(userId);
+      
+      if (!analyticsItem) {
+        // Create new analytics record if none exists
+        const [newAnalytics] = await db
+          .insert(analytics)
+          .values({
+            userId,
+            totalMessages: 1,
+            aiResponses: 0,
+            manualResponses: 1,
+            sentimentScore: 0,
+            date: new Date(),
+          })
+          .returning();
+        
+        return newAnalytics;
+      }
+      
+      // Update existing analytics
+      const [updatedAnalytics] = await db
+        .update(analytics)
+        .set({
+          manualResponses: analyticsItem.manualResponses + 1,
+          date: new Date(),
+        })
+        .where(eq(analytics.id, analyticsItem.id))
+        .returning();
+      
+      return updatedAnalytics;
+    } catch (error) {
+      console.error("Error incrementing manual responses:", error);
+      throw new Error(`Failed to increment manual responses: ${error.message}`);
+    }
+  }
+}
+
+// Use DatabaseStorage for production, MemStorage for development/testing
+export const storage = process.env.NODE_ENV === 'test' 
+  ? new MemStorage()
+  : new DatabaseStorage();
