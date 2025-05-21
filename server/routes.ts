@@ -470,6 +470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           path: 'uploads/7e0b2e79201d52aa0292f18d65ffbf1a',
           name: 'Final Detailed BOQ SRC Drone and CCTV 15 May 2025.pdf',
           type: 'application/pdf'
+        },
+        3: {
+          path: 'uploads/3dbfcfa1c2e47eda9bc40706552cbf74',
+          name: 'M6L-Brochure.pdf',
+          type: 'application/pdf'
         }
       };
       
