@@ -138,11 +138,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/platforms", isAuthenticated, async (req: any, res) => {
+  app.post("/api/platforms", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const platformData = { ...req.body, userId };
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      
+      // Add both userId and organizationId for multi-tenant security
+      const platformData = { 
+        ...req.body, 
+        userId,
+        organizationId 
+      };
+      
       const platform = await storage.createPlatform(platformData);
+      
+      // Invalidate the cache for platforms with organization context
+      cacheService.invalidate(`platforms:${userId}:${organizationId}`);
+      
       res.status(201).json(platform);
     } catch (error) {
       console.error("Error creating platform:", error);
@@ -150,16 +162,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Generic platform disconnect endpoint
-  app.post("/api/platforms/:id/disconnect", isAuthenticated, async (req: any, res) => {
+  // Generic platform disconnect endpoint with organization-level security
+  app.post("/api/platforms/:id/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
       const platformId = parseInt(req.params.id);
       
-      // First check if this platform belongs to the user
+      // First check if this platform belongs to the user and organization
       const existingPlatform = await storage.getPlatformById(platformId);
       if (!existingPlatform || existingPlatform.userId !== userId) {
         return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      // Multi-tenant security check - validate organization access
+      if (existingPlatform.organizationId && existingPlatform.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have permission to manage this platform" });
       }
       
       console.log(`Generic disconnect for platform ${platformId} (${existingPlatform.name})`);
@@ -183,12 +201,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Platform-specific disconnect endpoints
-  app.post("/api/platforms/facebook/disconnect", isAuthenticated, disconnectFacebook);
-  app.post("/api/platforms/instagram/disconnect", isAuthenticated, disconnectInstagram);
+  // Platform-specific disconnect endpoints with organization-level security
+  app.post("/api/platforms/facebook/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+    // Update to use the organization-aware version
+    const platform = await storage.getPlatformById(parseInt(req.params.id));
+    if (platform && platform.organizationId === req.organizationId) {
+      await disconnectFacebook(platform);
+      // Invalidate org-specific cache
+      cacheService.invalidate(`platforms:${req.userId}:${req.organizationId}`);
+      res.json({ success: true });
+    } else {
+      res.status(403).json({ message: "You don't have permission to manage this platform" });
+    }
+  });
+  
+  app.post("/api/platforms/instagram/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+    // Update to use the organization-aware version
+    const platform = await storage.getPlatformById(parseInt(req.params.id));
+    if (platform && platform.organizationId === req.organizationId) {
+      await disconnectInstagram(platform);
+      // Invalidate org-specific cache
+      cacheService.invalidate(`platforms:${req.userId}:${req.organizationId}`);
+      res.json({ success: true });
+    } else {
+      res.status(403).json({ message: "You don't have permission to manage this platform" });
+    }
+  });
 
-  // Conversations API
-  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+  // Conversations API with organization-level data segregation
+  app.get("/api/conversations", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversationsByUserId(userId);
