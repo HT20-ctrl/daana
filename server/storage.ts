@@ -752,15 +752,24 @@ export class MemStorage implements IStorage {
     return message;
   }
 
-  // Knowledge Base operations
+  // Knowledge Base operations with multi-tenant support
   async getKnowledgeBaseByUserId(userId: string): Promise<KnowledgeBase[]> {
     return Array.from(this.knowledgeBase.values()).filter(
       (kb) => kb.userId === userId
-    );
+    ).map(kb => ({
+      ...kb,
+      organizationId: kb.organizationId || null
+    }));
   }
 
   async getKnowledgeBaseById(id: number): Promise<KnowledgeBase | undefined> {
-    return this.knowledgeBase.get(id);
+    const kb = this.knowledgeBase.get(id);
+    if (!kb) return undefined;
+    
+    return {
+      ...kb,
+      organizationId: kb.organizationId || null
+    };
   }
 
   async createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase> {
@@ -769,6 +778,7 @@ export class MemStorage implements IStorage {
     const kb: KnowledgeBase = {
       ...knowledgeBaseItem,
       id,
+      organizationId: knowledgeBaseItem.organizationId || null,
       content: knowledgeBaseItem.content || null,
       filePath: knowledgeBaseItem.filePath || null,
       createdAt: new Date(),
@@ -789,11 +799,16 @@ export class MemStorage implements IStorage {
     const updatedKb = {
       ...kb,
       ...data,
+      // Preserve organization context when updating
+      organizationId: data.organizationId || kb.organizationId || null,
       updatedAt: new Date()
     };
     
     this.knowledgeBase.set(id, updatedKb);
-    return updatedKb;
+    return {
+      ...updatedKb,
+      organizationId: updatedKb.organizationId || null
+    };
   }
   
   async deleteKnowledgeBase(id: number): Promise<boolean> {

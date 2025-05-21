@@ -136,6 +136,7 @@ export const knowledgeBase = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: varchar("user_id").references(() => users.id).notNull(),
+    organizationId: varchar("organization_id").references(() => organizations.id),
     fileName: varchar("file_name").notNull(),
     fileType: varchar("file_type").notNull(), // e.g., "pdf", "docx", "txt"
     fileSize: integer("file_size").notNull(),
@@ -148,6 +149,10 @@ export const knowledgeBase = pgTable(
     return {
       // Index for faster queries by userId
       userIdIdx: index("knowledge_base_user_id_idx").on(table.userId),
+      // Index for organization filtering - critical for multi-tenant security
+      orgIdIdx: index("knowledge_base_org_id_idx").on(table.organizationId),
+      // Compound index for user+organization filtering - optimizes our most common security query pattern
+      userOrgIdx: index("knowledge_base_user_org_idx").on(table.userId, table.organizationId),
       // Index for file type filtering
       fileTypeIdx: index("knowledge_base_file_type_idx").on(table.fileType),
       // Index for sorting by most recent files
