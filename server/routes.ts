@@ -111,11 +111,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use in-memory caching with the cache service
       const startTime = Date.now();
       
-      // Get platforms with caching (30 second TTL)
+      // Get platforms with caching (120 second TTL)
       const platforms = await cacheService.getOrSet(
         cacheKey,
-        () => storage.getPlatformsByUserId(userId),
-        30 // Cache for 30 seconds
+        async () => {
+          console.log('🔍 Cache miss for platforms - loading from database...');
+          return await storage.getPlatformsByUserId(userId);
+        },
+        120 // Cache for 2 minutes to improve performance
       );
       
       const queryTime = Date.now() - startTime;
@@ -423,11 +426,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use in-memory caching with performance timing
       const startTime = Date.now();
       
-      // Get knowledge base with caching (60 second TTL)
+      // Get knowledge base with caching (120 second TTL)
       const knowledgeBase = await cacheService.getOrSet(
         cacheKey,
-        () => storage.getKnowledgeBaseByUserId(userId),
-        60 // Cache for 60 seconds
+        async () => {
+          console.log('🔍 Cache miss for knowledge base - loading from database...');
+          return await storage.getKnowledgeBaseByUserId(userId);
+        },
+        120 // Cache for 2 minutes to improve performance
       );
       
       const queryTime = Date.now() - startTime;
