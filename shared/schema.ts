@@ -25,15 +25,21 @@ export const sessions = pgTable(
 );
 
 // User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password"), // Hashed password for local auth
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("user"),
+  isVerified: boolean("is_verified").default(false),
+  verificationToken: varchar("verification_token"),
+  resetToken: varchar("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
+  authProvider: varchar("auth_provider").default("local"), // "local", "replit", "google", etc.
   userSettings: jsonb("user_settings"), // Store user settings as JSON
+  organizationId: varchar("organization_id"), // For multi-tenant support
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -140,11 +146,34 @@ export const knowledgeBase = pgTable(
   }
 );
 
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: varchar("id").primaryKey().notNull(),
+    name: varchar("name").notNull(),
+    plan: varchar("plan").default("free"), // free, professional, enterprise
+    logo: varchar("logo"),
+    website: varchar("website"),
+    industry: varchar("industry"),
+    size: integer("size"),
+    settings: jsonb("settings"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      nameIdx: index("organizations_name_idx").on(table.name),
+      planIdx: index("organizations_plan_idx").on(table.plan),
+    };
+  }
+);
+
 export const analytics = pgTable(
   "analytics", 
   {
     id: serial("id").primaryKey(),
     userId: varchar("user_id").references(() => users.id).notNull(),
+    organizationId: varchar("organization_id").references(() => organizations.id),
     totalMessages: integer("total_messages").default(0),
     aiResponses: integer("ai_responses").default(0),
     manualResponses: integer("manual_responses").default(0),
@@ -159,6 +188,32 @@ export const analytics = pgTable(
       dateIdx: index("analytics_date_idx").on(table.date),
       // Compound index for user analytics over time
       userDateIdx: index("analytics_user_date_idx").on(table.userId, table.date),
+      // Index for organization analytics
+      orgIdIdx: index("analytics_org_id_idx").on(table.organizationId),
+    };
+  }
+);
+
+// Organization members junction table to manage many-to-many relationships
+export const organizationMembers = pgTable(
+  "organization_members",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    role: varchar("role").default("member"), // owner, admin, member
+    inviteStatus: varchar("invite_status").default("pending"), // pending, accepted, rejected
+    inviteToken: varchar("invite_token"),
+    inviteExpiry: timestamp("invite_expiry"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      orgUserIdx: index("org_member_org_user_idx").on(table.organizationId, table.userId),
+      userIdx: index("org_member_user_idx").on(table.userId),
+      orgIdx: index("org_member_org_idx").on(table.organizationId),
+      roleIdx: index("org_member_role_idx").on(table.role),
     };
   }
 );
@@ -181,6 +236,12 @@ export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
 
 export type InsertAnalytics = typeof analytics.$inferInsert;
 export type Analytics = typeof analytics.$inferSelect;
+
+export type InsertOrganization = typeof organizations.$inferInsert;
+export type Organization = typeof organizations.$inferSelect;
+
+export type InsertOrganizationMember = typeof organizationMembers.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
 
 // User settings interfaces
 export interface AISettings {
