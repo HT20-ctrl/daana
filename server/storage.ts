@@ -391,6 +391,7 @@ export class MemStorage implements IStorage {
       accessToken: platformData.accessToken || null,
       refreshToken: platformData.refreshToken || null,
       tokenExpiry: platformData.tokenExpiry || null,
+      metadata: platformData.metadata || null,
       isConnected: platformData.isConnected || false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -698,7 +699,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
       return user;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user:", error);
       throw new Error(`Failed to get user: ${error.message}`);
     }
@@ -718,7 +719,7 @@ export class DatabaseStorage implements IStorage {
         })
         .returning();
       return user;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error upserting user:", error);
       throw new Error(`Failed to upsert user: ${error.message}`);
     }
@@ -731,7 +732,7 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(platforms)
         .where(eq(platforms.userId, userId));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching platforms by user ID:", error);
       throw new Error(`Failed to get platforms: ${error.message}`);
     }

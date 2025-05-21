@@ -171,20 +171,47 @@ export const getCacheTime = (queryKey: string | string[]): number => {
   return 1000 * 60 * 5;
 };
 
+/**
+ * Configure stale time based on data type
+ * This determines how quickly data is considered stale and needs refetching
+ */
+export const getStaleTime = (queryKey: string | string[]): number => {
+  const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+  
+  // Real-time data should be considered stale quickly
+  if (key.includes('/messages') || key.includes('/notifications')) {
+    return 1000 * 15; // 15 seconds for real-time data
+  } else if (key.includes('/conversations')) {
+    return 1000 * 30; // 30 seconds for conversation data
+  } else if (key.includes('/analytics')) {
+    return 1000 * 60 * 2; // 2 minutes for analytics data
+  } else if (key.includes('/platforms') || key.includes('/knowledge-base')) {
+    return 1000 * 60 * 10; // 10 minutes for more stable data
+  } 
+  
+  // Default stale time: 1 minute
+  return 1000 * 60;
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      // Use staleTime to optimize when to refetch data
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      // Dynamic stale time based on query key - see getStaleTime function
+      // This controls how fresh the data needs to be
       staleTime: 1000 * 30, // Default stale time is 30 seconds
-      // Keep cached data for the time determined by the data type
+      // Keep cached data for longer to improve performance when navigating back
       gcTime: 1000 * 60 * 10, // Default garbage collection time is 10 minutes
-      retry: false,
+      retry: 1, // Retry once on failure
     },
     mutations: {
-      retry: false,
+      retry: 1, // Retry once on failure for mutations too
+      onError: (error: any) => {
+        console.error('Mutation error:', error);
+      },
     },
   },
 });
