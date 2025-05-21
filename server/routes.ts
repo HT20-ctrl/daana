@@ -6,7 +6,7 @@ import { disconnectFacebook } from "./platforms/facebook";
 import { disconnectInstagram } from "./platforms/instagram";
 // Import authentication and security middleware
 import { authenticateJWT, type AuthRequest } from "./middleware/auth";
-import { addOrganizationContext, enforceOrganizationAccess } from "./middleware/multiTenant";
+import { multiTenantMiddleware, requireOrganizationAccess } from "./middleware/multiTenant";
 import authRoutes from "./routes/auth";
 import { filterByOrganization, ensureOrganizationContext } from "./utils/multiTenantHelper";
 
@@ -175,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Generic platform disconnect endpoint with organization-level security
-  app.post("/api/platforms/:id/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/platforms/:id/disconnect", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Platform-specific disconnect endpoints with organization-level security
-  app.post("/api/platforms/facebook/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/platforms/facebook/disconnect", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -257,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/platforms/instagram/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/platforms/instagram/disconnect", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations API with organization-level data segregation
-  app.get("/api/conversations", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.get("/api/conversations", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -649,7 +649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete knowledge base file endpoint
-  app.delete("/api/knowledge-base/:id", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.delete("/api/knowledge-base/:id", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -692,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/knowledge-base", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/knowledge-base", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     console.log("Knowledge base file upload request received", {
       contentType: req.headers['content-type'],
       contentLength: req.headers['content-length'],
@@ -993,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notification routes with multi-tenant security
-  app.get("/api/notifications", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.get("/api/notifications", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -1015,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Mark notification as read with multi-tenant security
-  app.post("/api/notifications/:id/read", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/notifications/:id/read", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;
@@ -1040,7 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Test notification endpoint (for development/testing) with multi-tenant security
-  app.post("/api/notifications/test", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
+  app.post("/api/notifications/test", isAuthenticated, requireOrganizationAccess, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId as string;
       const organizationId = req.organizationId;

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { OrganizationSelector } from "@/components/organization/OrganizationSelector";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -234,6 +235,9 @@ export default function Header({ user }: HeaderProps) {
         
         {/* Action buttons */}
         <div className="flex items-center ml-4 space-x-4">
+          {/* Organization Selector */}
+          <OrganizationSelector />
+          
           <NotificationBadge />
           
           <Button 

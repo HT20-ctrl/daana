@@ -170,7 +170,9 @@ function App() {
         <TooltipProvider>
           <GlobalErrorBoundary>
             <Toaster />
-            <AuthRouter />
+            <OrganizationProvider>
+              <AuthRouter />
+            </OrganizationProvider>
           </GlobalErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>
