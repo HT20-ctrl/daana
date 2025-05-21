@@ -356,7 +356,27 @@ export default function KnowledgeBasePage() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => window.open(`/api/knowledge-base/download/${item.id}`, '_blank')}
+                            onClick={() => {
+                              // Trigger direct file download
+                              const downloadUrl = `/api/knowledge-base/download/${item.id}`;
+                              
+                              // Create a temporary anchor element
+                              const link = document.createElement('a');
+                              link.href = downloadUrl;
+                              link.setAttribute('download', ''); // This is important for the browser to treat it as a download
+                              document.body.appendChild(link);
+                              link.click();
+                              
+                              // Clean up
+                              setTimeout(() => {
+                                document.body.removeChild(link);
+                              }, 100);
+                              
+                              toast({
+                                title: "Downloading file",
+                                description: "Your file download has started."
+                              });
+                            }}
                           >
                             <Download className="h-4 w-4" />
                           </Button>
