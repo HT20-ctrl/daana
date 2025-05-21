@@ -22,19 +22,7 @@ export interface AuthRequest extends Request {
  * Attaches user and organization info to the request
  */
 export const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  // For Replit Auth, check if user is authenticated through session
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    const user = req.user as any;
-    
-    // Extract user info from session
-    req.userId = user.claims?.sub;
-    req.organizationId = req.session?.organizationId || null;
-    
-    // Pass control to next middleware
-    return next();
-  }
-  
-  // Traditional JWT auth as fallback
+  // Extract token from authorization header
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
