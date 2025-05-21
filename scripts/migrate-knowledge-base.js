@@ -6,9 +6,18 @@
  * This migration is part of the multi-tenant security implementation.
  */
 
-const { Client } = require('pg');
+import pkg from 'pg';
+const { Client } = pkg;
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import * as dotenv from 'dotenv';
 
-async function runMigration() {
+// Set up environment
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: new URL('../.env', import.meta.url).pathname });
+
+export async function runMigration() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL
   });
@@ -70,7 +79,7 @@ async function runMigration() {
 }
 
 // Run migration if executed directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runMigration()
     .then(() => {
       console.log('Migration script executed successfully');
@@ -81,5 +90,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-
-module.exports = { runMigration };

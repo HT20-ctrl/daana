@@ -5,9 +5,15 @@
  * to the knowledge_base table, supporting multi-tenant data isolation
  */
 
-const { runMigration } = require('./migrate-knowledge-base');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+import { runMigration } from './migrate-knowledge-base.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import * as dotenv from 'dotenv';
+
+// Set up environment
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: new URL('../.env', import.meta.url).pathname });
 
 // Verify DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
