@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dana-worker
+  labels:
+    app: dana-worker
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: dana-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: dana-worker
+    spec:
+      containers:
+      - name: dana-worker
+        image: ${DOCKER_IMAGE_URL}:${DANA_VERSION}
+        args: ["npm", "run", "start:worker"]
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: dana-database-credentials
+              key: url
+        - name: RABBITMQ_URL
+          value: "amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@dana-rabbitmq:5672"
+        - name: RABBITMQ_USER
+          valueFrom:
+            secretKeyRef:
+              name: dana-rabbitmq-secret
+              key: default-user
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dana-rabbitmq-secret
+              key: default-pass
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dana-app-secrets
+              key: openai-api-key
+        livenessProbe:
+          httpGet:
+            path: /worker/health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /worker/ready
+            port: 8001
+          initialDelaySeconds: 15
+          periodSeconds: 10
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dana-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dana-worker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 4
+        periodSeconds: 60
+      selectPolicy: Max

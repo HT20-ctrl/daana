@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dana-rabbitmq
+  labels:
+    app: dana-rabbitmq
+spec:
+  serviceName: dana-rabbitmq
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dana-rabbitmq
+  template:
+    metadata:
+      labels:
+        app: dana-rabbitmq
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3.10-management
+        ports:
+        - containerPort: 5672
+          name: amqp
+        - containerPort: 15672
+          name: management
+        env:
+        - name: RABBITMQ_ERLANG_COOKIE
+          valueFrom:
+            secretKeyRef:
+              name: dana-rabbitmq-secret
+              key: erlang-cookie
+        - name: RABBITMQ_DEFAULT_USER
+          valueFrom:
+            secretKeyRef:
+              name: dana-rabbitmq-secret
+              key: default-user
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: dana-rabbitmq-secret
+              key: default-pass
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/rabbitmq
+        - name: config
+          mountPath: /etc/rabbitmq
+        readinessProbe:
+          exec:
+            command: ["rabbitmqctl", "status"]
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          exec:
+            command: ["rabbitmqctl", "status"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: dana-rabbitmq-config
+          items:
+          - key: rabbitmq.conf
+            path: rabbitmq.conf
+          - key: enabled_plugins
+            path: enabled_plugins
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard"
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dana-rabbitmq
+  labels:
+    app: dana-rabbitmq
+spec:
+  selector:
+    app: dana-rabbitmq
+  ports:
+  - port: 5672
+    name: amqp
+  - port: 15672
+    name: management
+  clusterIP: None
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dana-rabbitmq-config
+data:
+  rabbitmq.conf: |
+    ## Clustering
+    cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+    cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+    cluster_formation.k8s.address_type = hostname
+    cluster_formation.node_cleanup.interval = 30
+    cluster_formation.node_cleanup.only_log_warning = true
+    
+    ## Queue mirroring
+    ha-mode = all
+    ha-sync-mode = automatic
+    
+    ## Resource limits
+    vm_memory_high_watermark.relative = 0.7
+    
+    ## Defaults
+    default_vhost = /
+    default_user = admin
+    default_pass = admin
+    
+  enabled_plugins: |
+    [rabbitmq_management,rabbitmq_peer_discovery_k8s].
