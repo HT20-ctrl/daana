@@ -57,11 +57,18 @@ async function connectSendGrid(req: Request, res: Response) {
     // Get user ID from authenticated user
     const userId = (req.user as any)?.claims?.sub || "1";
     
-    // Create Email platform in database
+    // Get the user's organization ID for multi-tenant security
+    const organizationId = (req as any).organizationId || 
+      // Fallback: Get first organization the user belongs to
+      (await storage.getOrganizationsByUserId(userId))?.[0]?.id || 
+      'default-org';
+
+    // Create Email platform in database with organization context
     await storage.createPlatform({
       name: "email",
       displayName: "SendGrid Email Integration",
       userId: userId,
+      organizationId: organizationId, // Add organization ID for multi-tenant isolation
       accessToken: process.env.SENDGRID_API_KEY,
       refreshToken: null,
       tokenExpiry: null, // API keys don't expire
@@ -213,11 +220,18 @@ export async function googleOAuthCallback(req: Request, res: Response) {
           isConnected: true
         });
       } else {
-        // Create new platform in database
+        // Get the user's organization ID for multi-tenant security
+        const organizationId = (req as any).organizationId || 
+          // Fallback: Get first organization the user belongs to
+          (await storage.getOrganizationsByUserId(userId))?.[0]?.id || 
+          'default-org';
+        
+        // Create new platform in database with organization context
         await storage.createPlatform({
           name: "email",
           displayName,
           userId,
+          organizationId: organizationId, // Add organization ID for multi-tenant isolation
           accessToken,
           refreshToken,
           tokenExpiry,
@@ -250,11 +264,18 @@ export async function googleOAuthCallback(req: Request, res: Response) {
           isConnected: true
         });
       } else {
-        // Create new platform in database
+        // Get the user's organization ID for multi-tenant security
+        const organizationId = (req as any).organizationId || 
+          // Fallback: Get first organization the user belongs to
+          (await storage.getOrganizationsByUserId(userId))?.[0]?.id || 
+          'default-org';
+        
+        // Create new platform in database with organization context for proper data isolation
         await storage.createPlatform({
           name: "email",
           displayName: "Gmail Integration (Simulated)",
           userId: userId,
+          organizationId: organizationId, // Add organization ID for multi-tenant isolation
           accessToken: simulatedAccessToken,
           refreshToken: simulatedRefreshToken,
           tokenExpiry: tokenExpiry,
@@ -340,15 +361,27 @@ async function fetchGoogleUserInfo(accessToken: string) {
   }
 }
 
-// Test email sending via Gmail API
+// Test email sending via Gmail API with multi-tenant security
 export async function testSendEmail(req: Request, res: Response) {
   try {
     // Get user ID from the session or use demo user
     const userId = (req.user as any)?.claims?.sub || "1";
     
-    // Find the email platform for this user
+    // Get organization context for multi-tenant security
+    const organizationId = (req as any).organizationId || 
+      // Fallback: Get first organization the user belongs to
+      (await storage.getOrganizationsByUserId(userId))?.[0]?.id || 
+      'default-org';
+    
+    // Find the email platform for this user within the current organization context
     const platforms = await storage.getPlatformsByUserId(userId);
-    const gmailPlatform = platforms.find(p => 
+    
+    // Filter platforms by organization ID for proper multi-tenant data isolation
+    const orgPlatforms = platforms.filter(p => 
+      !p.organizationId || p.organizationId === organizationId
+    );
+    
+    const gmailPlatform = orgPlatforms.find(p => 
       p.name === "email" && 
       p.isConnected && 
       p.displayName.toLowerCase().includes("gmail")

@@ -997,10 +997,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Test notification endpoint (for development/testing)
-  app.post("/api/notifications/test", isAuthenticated, async (req: any, res) => {
+  // Test notification endpoint (for development/testing) with multi-tenant security
+  app.post("/api/notifications/test", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
       const { type, title, message, link } = req.body;
       
       if (!type || !title || !message) {
@@ -1015,11 +1016,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         link
       };
       
+      // Send notification with organization context for proper data isolation
       const result = await sendNotification(
         userId, 
         type as NotificationType, 
-        data
+        data,
+        organizationId
       );
+      
+      // Invalidate cache for real-time updates
+      cacheService.invalidate(`notifications:${userId}:${organizationId}`);
       
       res.json({ success: result });
     } catch (error) {
