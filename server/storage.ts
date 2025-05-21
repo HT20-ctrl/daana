@@ -145,12 +145,39 @@ export class MemStorage implements IStorage {
     };
     this.users.set("1", user);
     
-    // Add sample platforms
+    // Add demo organization
+    const demoOrg: Organization = {
+      id: "org1",
+      name: "Demo Organization",
+      description: "Demo organization for testing",
+      ownerId: "1",
+      plan: "enterprise",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.organizations.set("org1", demoOrg);
+    
+    // Add organization membership
+    const demoMember: OrganizationMember = {
+      id: this.orgMemberId++,
+      userId: "1",
+      organizationId: "org1",
+      role: "admin",
+      inviteStatus: "accepted",
+      inviteToken: null,
+      inviteExpiry: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.organizationMembers.set(1, demoMember);
+    
+    // Add sample platforms with organization context
     const fb: Platform = {
       id: this.platformId++,
       name: "facebook",
       displayName: "Facebook",
       userId: "1",
+      organizationId: "org1", // Multi-tenant context
       isConnected: false, // Set to false to allow connecting via OAuth
       accessToken: null,
       refreshToken: null,
@@ -166,6 +193,7 @@ export class MemStorage implements IStorage {
       name: "instagram",
       displayName: "Instagram",
       userId: "1",
+      organizationId: "org1", // Multi-tenant context
       isConnected: false, // Set to false by default to allow OAuth connection
       accessToken: null,
       refreshToken: null,
@@ -181,6 +209,7 @@ export class MemStorage implements IStorage {
       name: "slack",
       displayName: "Slack",
       userId: "1",
+      organizationId: "org1", // Multi-tenant context
       isConnected: false, // Set to false by default to allow proper connection
       accessToken: null,
       refreshToken: null,
@@ -191,10 +220,11 @@ export class MemStorage implements IStorage {
     };
     this.platforms.set(3, slack);
     
-    // Add conversations
+    // Add conversations with organization context
     const conv1: Conversation = {
       id: this.conversationId++,
       userId: "1",
+      organizationId: "org1", // Add organization ID for multi-tenant isolation
       platformId: 1,
       customerName: "John Davis",
       customerAvatar: "https://i.pravatar.cc/300?u=john.davis@example.com",
@@ -209,6 +239,7 @@ export class MemStorage implements IStorage {
     const conv2: Conversation = {
       id: this.conversationId++,
       userId: "1",
+      organizationId: "org1", // Add organization ID for multi-tenant isolation
       platformId: 1,
       customerName: "Sarah Williams",
       customerAvatar: "https://i.pravatar.cc/300?u=sarah.williams@example.com",
@@ -223,6 +254,7 @@ export class MemStorage implements IStorage {
     const conv3: Conversation = {
       id: this.conversationId++,
       userId: "1",
+      organizationId: "org1", // Add organization ID for multi-tenant isolation
       platformId: 3,
       customerName: "Alex Thompson",
       customerAvatar: "https://i.pravatar.cc/300?u=alex.thompson@example.com",
@@ -314,10 +346,11 @@ export class MemStorage implements IStorage {
       isAiGenerated: false
     });
     
-    // Add knowledge base items
+    // Add knowledge base items with organization context
     const kb1: KnowledgeBase = {
       id: this.knowledgeBaseId++,
       userId: "1",
+      organizationId: "org1", // Associate with organization for multi-tenant isolation
       fileName: "Return_Policy.pdf",
       fileType: "application/pdf",
       fileSize: 245000,
@@ -331,6 +364,7 @@ export class MemStorage implements IStorage {
     const kb2: KnowledgeBase = {
       id: this.knowledgeBaseId++,
       userId: "1",
+      organizationId: "org1", // Associate with organization for multi-tenant isolation
       fileName: "Shipping_Information.pdf", 
       fileType: "application/pdf",
       fileSize: 180000,
@@ -356,6 +390,7 @@ export class MemStorage implements IStorage {
     const analyticsData: Analytics = {
       id: 1,
       userId: "1",
+      organizationId: "org1", // Add organization ID for multi-tenant isolation
       totalMessages: totalMessages,
       aiResponses: aiResponses,
       manualResponses: manualResponses,
