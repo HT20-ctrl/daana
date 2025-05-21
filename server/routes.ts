@@ -203,28 +203,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Platform-specific disconnect endpoints with organization-level security
   app.post("/api/platforms/facebook/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
-    // Update to use the organization-aware version
-    const platform = await storage.getPlatformById(parseInt(req.params.id));
-    if (platform && platform.organizationId === req.organizationId) {
+    try {
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      const platformId = req.body.platformId;
+      
+      if (!platformId) {
+        return res.status(400).json({ message: "Platform ID is required" });
+      }
+      
+      // Update to use the organization-aware version
+      const platform = await storage.getPlatformById(platformId);
+      
+      // Verify platform exists and belongs to the user
+      if (!platform || platform.userId !== userId) {
+        return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      // Multi-tenant security check
+      if (platform.organizationId && platform.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have permission to manage this platform" });
+      }
+      
       await disconnectFacebook(platform);
+      
       // Invalidate org-specific cache
-      cacheService.invalidate(`platforms:${req.userId}:${req.organizationId}`);
-      res.json({ success: true });
-    } else {
-      res.status(403).json({ message: "You don't have permission to manage this platform" });
+      cacheService.invalidate(`platforms:${userId}:${organizationId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `${platform.displayName} has been disconnected`,
+        platform
+      });
+    } catch (error) {
+      console.error("Error disconnecting Facebook platform:", error);
+      res.status(500).json({ message: "Failed to disconnect platform" });
     }
   });
   
   app.post("/api/platforms/instagram/disconnect", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
-    // Update to use the organization-aware version
-    const platform = await storage.getPlatformById(parseInt(req.params.id));
-    if (platform && platform.organizationId === req.organizationId) {
+    try {
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      const platformId = req.body.platformId;
+      
+      if (!platformId) {
+        return res.status(400).json({ message: "Platform ID is required" });
+      }
+      
+      // Update to use the organization-aware version
+      const platform = await storage.getPlatformById(platformId);
+      
+      // Verify platform exists and belongs to the user
+      if (!platform || platform.userId !== userId) {
+        return res.status(404).json({ message: "Platform not found" });
+      }
+      
+      // Multi-tenant security check
+      if (platform.organizationId && platform.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have permission to manage this platform" });
+      }
+      
       await disconnectInstagram(platform);
+      
       // Invalidate org-specific cache
-      cacheService.invalidate(`platforms:${req.userId}:${req.organizationId}`);
-      res.json({ success: true });
-    } else {
-      res.status(403).json({ message: "You don't have permission to manage this platform" });
+      cacheService.invalidate(`platforms:${userId}:${organizationId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `${platform.displayName} has been disconnected`,
+        platform
+      });
+    } catch (error) {
+      console.error("Error disconnecting Instagram platform:", error);
+      res.status(500).json({ message: "Failed to disconnect platform" });
     }
   });
 
@@ -728,9 +780,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User settings endpoints
   
   // Update user profile
-  app.post("/api/user/profile", isAuthenticated, async (req: any, res) => {
+  app.post("/api/user/profile", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
       const profileData = req.body;
       
       console.log("Updating user profile:", { userId, profileData });
@@ -747,11 +799,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Old format - update user fields directly
         const updatedUser = await storage.upsertUser({
           id: userId,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          email: profileData.email,
+          firstName: profileData.firstName || user.firstName,
+          lastName: profileData.lastName || user.lastName,
+          email: profileData.email || user.email,
+          // Keep existing values for required fields
+          password: user.password,
+          role: user.role,
+          isVerified: user.isVerified,
           // Keep existing profile image URL if present
-          profileImageUrl: req.user.claims.profile_image_url || null
+          profileImageUrl: user.profileImageUrl
         });
         
         res.json(updatedUser);
@@ -759,9 +815,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // New format - update user settings JSON
         const currentSettings = user.userSettings || {};
         
-        // Create a clean record with just the ID and userSettings
+        // Properly construct a user update object that includes all required fields
         const userUpdate = {
           id: userId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          password: user.password,
+          role: user.role,
+          isVerified: user.isVerified,
+          profileImageUrl: user.profileImageUrl,
+          // Update the settings object
           userSettings: {
             ...currentSettings,
             profileSettings: profileData.profileSettings
@@ -787,9 +851,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update AI settings - we'll store these in a new userSettings field in the User model
-  app.post("/api/user/ai-settings", isAuthenticated, async (req: any, res) => {
+  app.post("/api/user/ai-settings", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
       const aiSettings = req.body;
       
       console.log("Updating AI settings for user:", userId, aiSettings);
@@ -806,9 +870,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For this demo, we'll store settings in a userSettings field
       const currentSettings = user.userSettings || {};
       
-      // Create a clean record with just the ID and userSettings
+      // Properly construct a user update object that includes all required fields
       const userUpdate = {
         id: userId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        password: user.password,
+        role: user.role,
+        isVerified: user.isVerified,
+        profileImageUrl: user.profileImageUrl,
+        // Update the settings object
         userSettings: {
           ...currentSettings,
           aiSettings
@@ -820,10 +892,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.upsertUser(userUpdate);
       
       // Make sure we're sending a properly formatted response
-      const userWithSettings = updatedUser as any;
       res.status(200).json({ 
         success: true, 
-        settings: userWithSettings.userSettings?.aiSettings || null
+        settings: updatedUser.userSettings?.aiSettings || null
       });
     } catch (error) {
       console.error("Error updating AI settings:", error);
@@ -832,9 +903,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update notification settings
-  app.post("/api/user/notification-settings", isAuthenticated, async (req: any, res) => {
+  app.post("/api/user/notification-settings", isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
       const notificationSettings = req.body;
       
       console.log("Updating notification settings for user:", userId, notificationSettings);
@@ -849,9 +920,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user with new notification settings
       const currentSettings = user.userSettings || {};
       
-      // Create a clean record with just the ID and userSettings
+      // Properly construct a user update object that includes all required fields
       const userUpdate = {
         id: userId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        password: user.password,
+        role: user.role,
+        isVerified: user.isVerified,
+        profileImageUrl: user.profileImageUrl,
+        // Update the settings object
         userSettings: {
           ...currentSettings,
           notificationSettings
@@ -863,10 +942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.upsertUser(userUpdate);
       
       // Make sure we're sending a properly formatted response
-      const userWithSettings = updatedUser as any;
       res.status(200).json({ 
         success: true,
-        settings: userWithSettings.userSettings?.notificationSettings || null
+        settings: updatedUser.userSettings?.notificationSettings || null
       });
     } catch (error) {
       console.error("Error updating notification settings:", error);

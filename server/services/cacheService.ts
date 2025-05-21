@@ -55,6 +55,20 @@ class CacheService {
   }
   
   /**
+   * Invalidate cache entries that match a prefix pattern
+   * This is essential for maintaining data isolation in multi-tenant systems
+   * @param prefix The cache key prefix to invalidate
+   */
+  invalidate(prefix: string): void {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        console.log(`🔄 Invalidating cache for key: ${key}`);
+        this.cache.delete(key);
+      }
+    }
+  }
+  
+  /**
    * Clear all items from the cache
    */
   clear(): void {
