@@ -5,6 +5,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { extractTextFromFiles } from "./ai";
+// Import auth routes
+import authRoutes from "./routes/auth";
+import session from "express-session";
 // Security imports handled below
 import { 
   connectFacebook, 
@@ -91,8 +94,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Simple auth route that returns a demo user - no auth needed for this endpoint
-  app.get('/api/auth/user', async (req, res) => {
+  // Register all authentication routes (signup, signin, etc.)
+  app.use('/api/auth', authRoutes);
+  
+  // Keep the simple demo user endpoint as a fallback
+  app.get('/api/auth/demo-user', async (req, res) => {
     try {
       // For development, return a demo user
       const demoUser = {
@@ -360,19 +366,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Facebook Platform Integration
   app.get("/api/platforms/facebook/status", getFacebookStatus);
 
-  app.get("/api/platforms/facebook/connect", async (req, res) => {
+  app.get("/api/platforms/facebook/connect", async (req: any, res) => {
     try {
-      // Setup session for the OAuth flow if it doesn't exist
-      if (!req.session) {
-        req.session = {};
-      }
-
       console.log("Facebook connect endpoint called");
       
       // If Facebook is configured with real credentials, use the OAuth flow
       if (isFacebookConfigured()) {
         console.log("Using real Facebook OAuth flow");
-        return connectFacebook(req, res);
+        return connectFacebook(req as any, res);
       }
       
       console.log("Using demo Facebook connection");

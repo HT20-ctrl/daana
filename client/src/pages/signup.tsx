@@ -57,30 +57,48 @@ export default function SignUpPage() {
   const signUpMutation = useMutation({
     mutationFn: async (formData: Omit<SignUpFormValues, 'confirmPassword' | 'agreeToTerms'>) => {
       try {
-        // Make direct fetch request instead of using apiRequest to bypass potential issues
+        // Enhanced direct fetch implementation with better error handling
+        console.log('Sending registration data:', JSON.stringify(formData));
+        
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
           },
           body: JSON.stringify(formData),
           credentials: 'include'
         });
 
-        // Check if response is successful
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.message || `Registration failed with status ${response.status}`);
-        }
-
-        // Check content type to make sure we're getting JSON back
+        // First check for HTML response which indicates an error
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('text/html')) {
-          throw new Error('The server sent an HTML response instead of JSON. Please try again.');
+          console.error('Server returned HTML instead of JSON');
+          throw new Error('The server returned an HTML response. Please try again.');
         }
 
-        // Parse JSON response
-        const data = await response.json();
+        // Try to parse the response as JSON
+        let data;
+        try {
+          const textResponse = await response.text();
+          // Try to parse as JSON
+          try {
+            data = JSON.parse(textResponse);
+          } catch (jsonError) {
+            console.error('Failed to parse response as JSON:', textResponse);
+            throw new Error('The server returned an invalid response. Please try again.');
+          }
+        } catch (textError) {
+          console.error('Error reading response text:', textError);
+          throw new Error('Error reading server response. Please try again.');
+        }
+
+        // Check for error in the JSON response
+        if (!response.ok) {
+          console.error('Server returned error:', data);
+          throw new Error(data?.message || data?.error || `Registration failed with status ${response.status}`);
+        }
+
         return data;
       } catch (error: any) {
         console.error('Sign-up request error:', error);
