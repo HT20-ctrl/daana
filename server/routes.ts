@@ -4,8 +4,10 @@ import { storage } from "./storage";
 import { disconnectFacebook } from "./platforms/facebook";
 import { disconnectInstagram } from "./platforms/instagram";
 // Import authentication and security middleware
-import { authenticateJWT, enforceOrganizationAccess, type AuthRequest } from "./middleware/auth";
+import { authenticateJWT, type AuthRequest } from "./middleware/auth";
+import { addOrganizationContext, enforceOrganizationAccess } from "./middleware/multiTenant";
 import authRoutes from "./routes/auth";
+import { filterByOrganization, ensureOrganizationContext } from "./utils/multiTenantHelper";
 
 // In development mode, you can use this middleware for testing without JWT auth
 // This can be toggled with an environment variable
