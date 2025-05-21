@@ -598,6 +598,7 @@ export class MemStorage implements IStorage {
       id,
       name: platformData.name,
       userId: platformData.userId,
+      organizationId: platformData.organizationId || null,
       displayName: platformData.displayName,
       accessToken: platformData.accessToken || null,
       refreshToken: platformData.refreshToken || null,
@@ -728,6 +729,7 @@ export class MemStorage implements IStorage {
     const conversation: Conversation = {
       id,
       userId: conversationData.userId,
+      organizationId: conversationData.organizationId ?? null,
       customerName: conversationData.customerName,
       platformId: conversationData.platformId ?? null,
       customerAvatar: conversationData.customerAvatar ?? null,
@@ -867,9 +869,14 @@ export class MemStorage implements IStorage {
     const analytics = this.analytics.get(userId);
     
     if (!analytics) {
+      // Get organization ID from user's default organization
+      const userOrgs = await this.getOrganizationsByUserId(userId);
+      const organizationId = userOrgs.length > 0 ? userOrgs[0].id : null;
+      
       const newAnalytics: Analytics = {
         id: 1,
         userId,
+        organizationId,
         totalMessages: 1,
         aiResponses: 0,
         manualResponses: 0,
