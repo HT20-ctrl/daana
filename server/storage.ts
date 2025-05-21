@@ -118,6 +118,11 @@ export class MemStorage implements IStorage {
       lastName: "User",
       role: "admin",
       profileImageUrl: "https://i.pravatar.cc/300?u=demo@example.com",
+      password: null,
+      isVerified: true,
+      verificationToken: null,
+      resetToken: null,
+      resetTokenExpiry: null,
       userSettings: {
         aiSettings: {
           model: "gpt-4o",
