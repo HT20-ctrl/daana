@@ -85,11 +85,14 @@ export class MemStorage implements IStorage {
   private messages: Map<number, Message>;
   private knowledgeBase: Map<number, KnowledgeBase>;
   private analytics: Map<string, Analytics>;
+  private organizations: Map<string, Organization>;
+  private organizationMembers: Map<number, OrganizationMember>;
   
   private platformId: number = 1;
   private conversationId: number = 1;
   private messageId: number = 1;
   private knowledgeBaseId: number = 1;
+  private orgMemberId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -98,8 +101,10 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.knowledgeBase = new Map();
     this.analytics = new Map();
+    this.organizations = new Map();
+    this.organizationMembers = new Map();
     
-    // Initialize with demo data if needed
+    // Initialize with demo data
     this.initDemoData();
   }
 
@@ -358,18 +363,52 @@ export class MemStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+  
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.verificationToken === token) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.resetToken === token) {
+        return user;
+      }
+    }
+    return undefined;
+  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existingUser = await this.getUser(userData.id);
     
     const user: User = {
       id: userData.id,
-      email: userData.email ?? existingUser?.email ?? null,
+      email: userData.email ?? existingUser?.email ?? "",
+      password: userData.password ?? existingUser?.password ?? null,
       firstName: userData.firstName ?? existingUser?.firstName ?? null,
       lastName: userData.lastName ?? existingUser?.lastName ?? null,
       profileImageUrl: userData.profileImageUrl ?? existingUser?.profileImageUrl ?? null,
       role: userData.role ?? existingUser?.role ?? "user",
-      userSettings: userData.userSettings ?? existingUser?.userSettings ?? {}, // Handle userSettings field
+      isVerified: userData.isVerified ?? existingUser?.isVerified ?? false,
+      verificationToken: userData.verificationToken ?? existingUser?.verificationToken ?? null,
+      resetToken: userData.resetToken ?? existingUser?.resetToken ?? null,
+      resetTokenExpiry: userData.resetTokenExpiry ?? existingUser?.resetTokenExpiry ?? null,
+      authProvider: userData.authProvider ?? existingUser?.authProvider ?? "local",
+      organizationId: userData.organizationId ?? existingUser?.organizationId ?? null,
+      userSettings: userData.userSettings ?? existingUser?.userSettings ?? {},
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
@@ -381,6 +420,7 @@ export class MemStorage implements IStorage {
       this.analytics.set(userData.id, {
         id: 1,
         userId: userData.id,
+        organizationId: userData.organizationId || null,
         totalMessages: 0,
         aiResponses: 0,
         manualResponses: 0,
@@ -390,6 +430,114 @@ export class MemStorage implements IStorage {
     }
     
     return user;
+  }
+  
+  // Organization operations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    return this.organizations.get(id);
+  }
+  
+  async createOrganization(orgData: InsertOrganization): Promise<Organization> {
+    const newOrg: Organization = {
+      id: orgData.id,
+      name: orgData.name,
+      plan: orgData.plan || "free",
+      logo: orgData.logo || null,
+      website: orgData.website || null,
+      industry: orgData.industry || null,
+      size: orgData.size || null,
+      settings: orgData.settings || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.organizations.set(newOrg.id, newOrg);
+    return newOrg;
+  }
+  
+  async updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization> {
+    const existingOrg = await this.getOrganization(id);
+    
+    if (!existingOrg) {
+      throw new Error(`Organization with id ${id} not found`);
+    }
+    
+    const updatedOrg: Organization = {
+      ...existingOrg,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.organizations.set(id, updatedOrg);
+    return updatedOrg;
+  }
+  
+  // Organization membership operations
+  async getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+    const members: OrganizationMember[] = [];
+    
+    for (const member of this.organizationMembers.values()) {
+      if (member.organizationId === organizationId) {
+        members.push(member);
+      }
+    }
+    
+    return members;
+  }
+  
+  async getOrganizationsByUserId(userId: string): Promise<Organization[]> {
+    const organizations: Organization[] = [];
+    
+    for (const member of this.organizationMembers.values()) {
+      if (member.userId === userId) {
+        const organization = await this.getOrganization(member.organizationId);
+        if (organization) {
+          organizations.push(organization);
+        }
+      }
+    }
+    
+    return organizations;
+  }
+  
+  async addOrganizationMember(memberData: InsertOrganizationMember): Promise<OrganizationMember> {
+    const id = this.orgMemberId++;
+    
+    const newMember: OrganizationMember = {
+      id,
+      organizationId: memberData.organizationId,
+      userId: memberData.userId,
+      role: memberData.role || "member",
+      inviteStatus: memberData.inviteStatus || "pending",
+      inviteToken: memberData.inviteToken || null,
+      inviteExpiry: memberData.inviteExpiry || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.organizationMembers.set(id, newMember);
+    return newMember;
+  }
+  
+  async updateOrganizationMember(id: number, data: Partial<InsertOrganizationMember>): Promise<OrganizationMember> {
+    const existingMember = this.organizationMembers.get(id);
+    
+    if (!existingMember) {
+      throw new Error(`Organization member with id ${id} not found`);
+    }
+    
+    const updatedMember: OrganizationMember = {
+      ...existingMember,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.organizationMembers.set(id, updatedMember);
+    return updatedMember;
+  }
+  
+  async removeOrganizationMember(id: number): Promise<boolean> {
+    return this.organizationMembers.delete(id);
   }
 
   // Platform operations
