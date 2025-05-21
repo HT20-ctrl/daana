@@ -25,6 +25,10 @@ import {
   type NotificationType,
   type NotificationData
 } from './services/notificationService';
+//import { 
+//  platformQueries, 
+//  knowledgeBaseQueries 
+//} from './query-optimizations';
 // import { WebSocketServer } from "ws";
 import fs from "fs";
 import path from "path";
@@ -97,11 +101,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Platforms API - development version without auth
+  // Platforms API - optimized with caching and performance monitoring
   app.get("/api/platforms", async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Use direct database query with performance timing
+      const startTime = Date.now();
       const platforms = await storage.getPlatformsByUserId(userId);
+      const queryTime = Date.now() - startTime;
+      
+      if (queryTime > 500) {
+        console.log(`⏱️ Platforms query performance: ${queryTime}ms`);
+      }
+      
+      // Add cache headers - cache for 60 seconds on client side
+      res.setHeader('Cache-Control', 'private, max-age=60');
       res.json(platforms);
     } catch (error) {
       console.error("Error fetching platforms:", error);
@@ -395,9 +410,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      // Use optimized query from query-optimizations.ts
+      // Use direct optimized query with performance timing
       const startTime = Date.now();
-      const knowledgeBase = await knowledgeBaseQueries.getByUserId(userId);
+      
+      // Optimized query using the database directly
+      const knowledgeBase = await storage.getKnowledgeBaseByUserId(userId);
+      
       const queryTime = Date.now() - startTime;
       
       if (queryTime > 500) {
