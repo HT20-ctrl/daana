@@ -15,23 +15,30 @@ export interface NotificationData {
   metadata?: Record<string, any>;
 }
 
-// In-memory store for active user notifications
-// In a production app, these would be stored in the database
+// In-memory store for active user notifications with organization isolation
+// In a production app, these would be stored in the database with proper multi-tenant isolation
+// Key format: "userId:organizationId" to ensure data segregation between organizations
 const userNotifications = new Map<string, Array<{
   id: string;
   type: NotificationType;
   data: NotificationData;
   createdAt: Date;
   read: boolean;
-}>>();
+  organizationId: string; // Track organization ID for security filtering
+}>>(); 
 
 /**
- * Send a notification to a user with optional email delivery
+ * Send a notification to a user with optional email delivery and organization-level isolation
+ * @param userId The ID of the user receiving the notification
+ * @param type The type of notification
+ * @param data The notification content and metadata
+ * @param organizationId The organization context for multi-tenant security
  */
 export async function sendNotification(
   userId: string,
   type: NotificationType,
-  data: NotificationData
+  data: NotificationData,
+  organizationId: string
 ): Promise<boolean> {
   try {
     // Get user to check notification preferences
@@ -41,25 +48,29 @@ export async function sendNotification(
       return false;
     }
     
-    // Store notification in-app
+    // Store notification in-app with organization context
     const notificationId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    if (!userNotifications.has(userId)) {
-      userNotifications.set(userId, []);
+    // Create user-organization key for proper data isolation
+    const userOrgKey = `${userId}:${organizationId}`;
+    
+    if (!userNotifications.has(userOrgKey)) {
+      userNotifications.set(userOrgKey, []);
     }
     
-    userNotifications.get(userId)?.push({
+    userNotifications.get(userOrgKey)?.push({
       id: notificationId,
       type,
       data,
       createdAt: new Date(),
-      read: false
+      read: false,
+      organizationId // Store organization ID for security filtering
     });
     
-    // Limit to 100 notifications per user
-    const userNotifs = userNotifications.get(userId);
+    // Limit to 100 notifications per user-organization combination
+    const userNotifs = userNotifications.get(userOrgKey);
     if (userNotifs && userNotifs.length > 100) {
-      userNotifications.set(userId, userNotifs.slice(-100));
+      userNotifications.set(userOrgKey, userNotifs.slice(-100));
     }
     
     // Check if we should send an email based on user preferences
@@ -67,7 +78,7 @@ export async function sendNotification(
     
     if (shouldSendEmail) {
       const emailResult = await sendEmailNotification(user, type, data);
-      console.log(`Email notification result for user ${userId}:`, emailResult);
+      console.log(`Email notification result for user ${userId} in org ${organizationId}:`, emailResult);
     }
     
     return true;
@@ -78,20 +89,40 @@ export async function sendNotification(
 }
 
 /**
- * Get notifications for a user
+ * Get notifications for a user with organization-level filtering for multi-tenant security
+ * @param userId The user ID to get notifications for
+ * @param organizationId The organization context for multi-tenant security
  */
-export function getUserNotifications(userId: string) {
-  return userNotifications.get(userId) || [];
+export function getUserNotifications(userId: string, organizationId: string) {
+  // Create user-organization key for proper data isolation
+  const userOrgKey = `${userId}:${organizationId}`;
+  
+  // Return only notifications for this specific user+organization combination
+  return userNotifications.get(userOrgKey) || [];
 }
 
 /**
- * Mark a notification as read
+ * Mark a notification as read with organization-level security checks
+ * @param userId The user ID who owns the notification
+ * @param notificationId The ID of the notification to mark as read
+ * @param organizationId The organization context for multi-tenant security
  */
-export function markNotificationRead(userId: string, notificationId: string): boolean {
-  const notifications = userNotifications.get(userId);
+export function markNotificationRead(
+  userId: string, 
+  notificationId: string, 
+  organizationId: string
+): boolean {
+  // Create user-organization key for proper data isolation
+  const userOrgKey = `${userId}:${organizationId}`;
+  
+  const notifications = userNotifications.get(userOrgKey);
   if (!notifications) return false;
   
-  const notification = notifications.find(n => n.id === notificationId);
+  // Find notification and verify it belongs to the specified organization
+  const notification = notifications.find(n => 
+    n.id === notificationId && n.organizationId === organizationId
+  );
+  
   if (notification) {
     notification.read = true;
     return true;

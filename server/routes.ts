@@ -952,11 +952,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Notification routes
-  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+  // Notification routes with multi-tenant security
+  app.get("/api/notifications", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const notifications = getUserNotifications(userId);
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
+      
+      // Get organization-specific notifications with proper data isolation
+      const notifications = getUserNotifications(userId, organizationId);
+      
+      // Add organization context to the cache key for proper data isolation
+      const cacheKey = `notifications:${userId}:${organizationId}`;
+      cacheService.set(cacheKey, notifications, 300); // Cache for 5 minutes
+      
       // Ensure we always return an array, even if notifications is undefined
       res.json(notifications || []);
     } catch (error) {
@@ -965,17 +973,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Mark notification as read
-  app.post("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+  // Mark notification as read with multi-tenant security
+  app.post("/api/notifications/:id/read", isAuthenticated, enforceOrganizationAccess, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId as string;
+      const organizationId = req.organizationId as string;
       const notificationId = req.params.id;
       
-      const success = markNotificationRead(userId, notificationId);
+      // Mark as read with organization context for security
+      const success = markNotificationRead(userId, notificationId, organizationId);
       
       if (!success) {
         return res.status(404).json({ message: "Notification not found" });
       }
+      
+      // Invalidate notification cache for this organization context
+      cacheService.invalidate(`notifications:${userId}:${organizationId}`);
       
       res.json({ success: true });
     } catch (error) {
