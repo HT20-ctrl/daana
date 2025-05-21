@@ -493,7 +493,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send the file using an absolute path
       console.log(`Attempting to download file from path: ${filePath}`);
-      return res.download(filePath);
+      
+      // Use sendFile instead of download for better error handling
+      return res.sendFile(filePath, { root: process.cwd() }, (err) => {
+        if (err) {
+          console.error("Error sending file:", err);
+          return res.status(500).json({ message: "Error sending file", error: err.message });
+        }
+        console.log("File sent successfully");
+      });
     } catch (error) {
       console.error("Error downloading file:", error);
       return res.status(500).json({ message: "Failed to download file" });
