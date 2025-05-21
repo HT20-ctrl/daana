@@ -333,6 +333,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Messages AI endpoint to handle the client request
+  app.get("/api/messages/ai", isAuthenticated, async (req: any, res) => {
+    try {
+      // Return empty array for polling
+      res.json([]);
+    } catch (error) {
+      console.error("Error with messages/ai endpoint:", error);
+      res.status(500).json({ message: "Failed to process AI messages request" });
+    }
+  });
+  
   // AI Response Generation
   app.post("/api/ai/generate", isAuthenticated, async (req: any, res) => {
     try {
@@ -699,7 +710,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const notifications = getUserNotifications(userId);
-      res.json(notifications);
+      // Ensure we always return an array, even if notifications is undefined
+      res.json(notifications || []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ message: "Failed to fetch notifications" });
