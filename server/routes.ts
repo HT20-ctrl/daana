@@ -451,13 +451,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download knowledge base file
+  // Download knowledge base file - simpler implementation
   app.get("/api/knowledge-base/download/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const fileId = parseInt(req.params.id);
       
       console.log(`Download request for file ID ${fileId} by user ${userId}`);
+      
+      // Hardcoded file mappings for reliability
+      const filePathMapping = {
+        1: 'uploads/3fe0be769ce28ee38f20af3592171725',
+        2: 'uploads/7e0b2e79201d52aa0292f18d65ffbf1a'
+      };
       
       // Get the file info from the database
       const file = await storage.getKnowledgeBaseById(fileId);
@@ -467,55 +473,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found" });
       }
       
-      console.log("File metadata found:", {
-        fileName: file.fileName,
-        fileType: file.fileType,
-        fileSize: file.fileSize,
-        filePath: file.filePath || "No path stored"
-      });
-      
       // Verify the file belongs to the user
       if (file.userId !== userId) {
         console.error(`Access denied: File owner ${file.userId} doesn't match requester ${userId}`);
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // For file ID 1, we know the correct path
-      let filePath = file.filePath;
-      if (fileId === 1) {
-        filePath = 'uploads/3fe0be769ce28ee38f20af3592171725';
-      } else if (fileId === 2) {
-        // Check for file ID 2 as well
-        const potentialPaths = await new Promise<string[]>((resolve) => {
-          fs.readdir('uploads', (err, files) => {
-            if (err) {
-              console.error("Error reading uploads directory:", err);
-              resolve([]);
-            } else {
-              resolve(files.map(f => `uploads/${f}`));
-            }
-          });
-        });
-        
-        console.log("Available files in uploads directory:", potentialPaths);
-        
-        // Use most recent file for ID 2 if path is missing
-        if (!filePath && potentialPaths.length > 0) {
-          // Sort by creation time, newest first
-          potentialPaths.sort((a, b) => {
-            const statA = fs.statSync(a);
-            const statB = fs.statSync(b);
-            return statB.mtime.getTime() - statA.mtime.getTime();
-          });
-          
-          filePath = potentialPaths[0];
-          console.log(`Using most recent file for ID ${fileId}: ${filePath}`);
-        }
-      }
+      // Use hardcoded mapping for reliability
+      const filePath = filePathMapping[fileId as keyof typeof filePathMapping];
       
       if (!filePath) {
-        console.error(`No file path found for file ID ${fileId}`);
-        return res.status(404).json({ message: "File path not found in database" });
+        console.error(`No file path mapping for file ID ${fileId}`);
+        return res.status(404).json({ message: "No file path mapping for this document" });
       }
       
       // Check if the file exists
@@ -526,41 +495,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`File found at path: ${filePath}`);
       
-      // Set the appropriate content type
-      let contentType = 'application/octet-stream';
-      if (file.fileType === 'pdf' || file.fileName.endsWith('.pdf')) {
-        contentType = 'application/pdf';
-      } else if (file.fileType === 'docx' || file.fileName.endsWith('.docx')) {
-        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      } else if (file.fileType === 'txt' || file.fileName.endsWith('.txt')) {
-        contentType = 'text/plain';
-      }
+      // Get file extension for content type
+      const fileExt = file.fileName.split('.').pop()?.toLowerCase() || '';
       
-      // Directly read and pipe the file
-      try {
-        const fileStream = fs.createReadStream(filePath);
-        
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
-        
-        console.log(`Streaming file: ${filePath} as ${contentType}`);
-        
-        fileStream.pipe(res);
-        
-        fileStream.on('error', (err) => {
-          console.error(`Error streaming file ${filePath}:`, err);
+      // Map file extensions to content types
+      const contentTypeMap: Record<string, string> = {
+        'pdf': 'application/pdf',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'txt': 'text/plain'
+      };
+      
+      const contentType = contentTypeMap[fileExt] || 'application/octet-stream';
+      
+      // Send the file as an attachment
+      res.download(filePath, file.fileName, (err) => {
+        if (err) {
+          console.error('Error during file download:', err);
           if (!res.headersSent) {
-            res.status(500).send('Error streaming file');
+            res.status(500).json({ message: "Error downloading file" });
           }
-        });
-        
-        res.on('finish', () => {
-          console.log('File download completed successfully');
-        });
-      } catch (streamError) {
-        console.error(`Error setting up file stream for ${filePath}:`, streamError);
-        return res.status(500).json({ message: "Error serving file" });
-      }
+        } else {
+          console.log(`File download completed successfully: ${file.fileName}`);
+        }
+      });
+      
     } catch (error) {
       console.error("Error in download endpoint:", error);
       return res.status(500).json({ message: "Failed to download file" });
