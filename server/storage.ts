@@ -567,16 +567,22 @@ class MemStorage {
 class DatabaseStorage {
   // User methods
   async getUser(id: string): Promise<User | undefined> {
+    if (!db) return undefined;
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    if (!db) return undefined;
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     // Check if user exists
     const existingUser = userData.id ? await this.getUser(userData.id) : undefined;
     
@@ -609,6 +615,7 @@ class DatabaseStorage {
 
   // Platform methods
   async getPlatformsByUserId(userId: string): Promise<Platform[]> {
+    if (!db) return [];
     return db
       .select()
       .from(platforms)
@@ -617,11 +624,16 @@ class DatabaseStorage {
   }
 
   async getPlatformById(id: number): Promise<Platform | undefined> {
+    if (!db) return undefined;
     const [platform] = await db.select().from(platforms).where(eq(platforms.id, id));
     return platform;
   }
 
   async createPlatform(platformData: InsertPlatform): Promise<Platform> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [platform] = await db
       .insert(platforms)
       .values({
@@ -635,6 +647,10 @@ class DatabaseStorage {
   }
 
   async updatePlatform(id: number, platformData: Partial<InsertPlatform>): Promise<Platform> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [updatedPlatform] = await db
       .update(platforms)
       .set({
@@ -648,12 +664,17 @@ class DatabaseStorage {
   }
 
   async deletePlatform(id: number): Promise<boolean> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const result = await db.delete(platforms).where(eq(platforms.id, id));
     return result.rowCount > 0;
   }
 
   // Conversation methods
   async getConversationsByUserId(userId: string): Promise<Conversation[]> {
+    if (!db) return [];
     return db
       .select()
       .from(conversations)
@@ -662,6 +683,7 @@ class DatabaseStorage {
   }
 
   async getConversationsByUserAndOrganization(userId: string, organizationId: string): Promise<Conversation[]> {
+    if (!db) return [];
     return db
       .select()
       .from(conversations)
@@ -675,11 +697,16 @@ class DatabaseStorage {
   }
 
   async getConversationById(id: number): Promise<Conversation | undefined> {
+    if (!db) return undefined;
     const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
     return conversation;
   }
 
   async createConversation(conversationData: InsertConversation): Promise<Conversation> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [conversation] = await db
       .insert(conversations)
       .values({
@@ -695,6 +722,7 @@ class DatabaseStorage {
 
   // Message methods
   async getMessagesByConversationId(conversationId: number): Promise<Message[]> {
+    if (!db) return [];
     return db
       .select()
       .from(messages)
@@ -703,6 +731,10 @@ class DatabaseStorage {
   }
 
   async createMessage(messageData: InsertMessage): Promise<Message> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [message] = await db
       .insert(messages)
       .values({
@@ -726,6 +758,7 @@ class DatabaseStorage {
 
   // Knowledge Base methods
   async getKnowledgeBaseByUserId(userId: string): Promise<KnowledgeBase[]> {
+    if (!db) return [];
     return db
       .select()
       .from(knowledgeBase)
@@ -734,11 +767,16 @@ class DatabaseStorage {
   }
 
   async getKnowledgeBaseById(id: number): Promise<KnowledgeBase | undefined> {
+    if (!db) return undefined;
     const [item] = await db.select().from(knowledgeBase).where(eq(knowledgeBase.id, id));
     return item;
   }
 
   async createKnowledgeBase(knowledgeBaseItem: InsertKnowledgeBase): Promise<KnowledgeBase> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [item] = await db
       .insert(knowledgeBase)
       .values({
@@ -752,6 +790,10 @@ class DatabaseStorage {
   }
 
   async updateKnowledgeBase(id: number, data: Partial<KnowledgeBase>): Promise<KnowledgeBase> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [updatedItem] = await db
       .update(knowledgeBase)
       .set({
@@ -765,23 +807,32 @@ class DatabaseStorage {
   }
 
   async deleteKnowledgeBase(id: number): Promise<boolean> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const result = await db.delete(knowledgeBase).where(eq(knowledgeBase.id, id));
     return result.rowCount > 0;
   }
 
   // Analytics methods
   async getAnalyticsByUserId(userId: string): Promise<Analytics | undefined> {
-    const [analytics] = await db
+    if (!db) return undefined;
+    const [analyticsData] = await db
       .select()
       .from(analytics)
       .where(eq(analytics.userId, userId))
       .orderBy(desc(analytics.date))
       .limit(1);
     
-    return analytics;
+    return analyticsData;
   }
 
   async incrementTotalMessages(userId: string): Promise<Analytics> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     // Get current analytics or create new
     let userAnalytics = await this.getAnalyticsByUserId(userId);
     
@@ -815,6 +866,10 @@ class DatabaseStorage {
   }
 
   async incrementAiResponses(userId: string): Promise<Analytics> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     // Get current analytics or create new
     let userAnalytics = await this.getAnalyticsByUserId(userId);
     
@@ -849,6 +904,10 @@ class DatabaseStorage {
   }
 
   async incrementManualResponses(userId: string): Promise<Analytics> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     // Get current analytics or create new
     let userAnalytics = await this.getAnalyticsByUserId(userId);
     
@@ -884,11 +943,14 @@ class DatabaseStorage {
 
   // Organization methods
   async getOrganization(id: string): Promise<Organization | undefined> {
+    if (!db) return undefined;
     const [organization] = await db.select().from(organizations).where(eq(organizations.id, id));
     return organization;
   }
 
   async getOrganizationsByUserId(userId: string): Promise<Organization[]> {
+    if (!db) return [];
+    
     // Find all organization memberships for this user
     const memberships = await db
       .select()
@@ -917,6 +979,10 @@ class DatabaseStorage {
   }
 
   async createOrganization(organizationData: Partial<InsertOrganization>): Promise<Organization> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const id = organizationData.id || nanoid();
     
     const [organization] = await db
@@ -939,6 +1005,10 @@ class DatabaseStorage {
   }
 
   async updateOrganization(id: string, data: Partial<Organization>): Promise<Organization> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const [updatedOrg] = await db
       .update(organizations)
       .set({
@@ -953,6 +1023,7 @@ class DatabaseStorage {
 
   // Organization members methods
   async getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+    if (!db) return [];
     return db
       .select()
       .from(organizationMembers)
@@ -960,6 +1031,10 @@ class DatabaseStorage {
   }
 
   async addOrganizationMember(memberData: Partial<InsertOrganizationMember>): Promise<OrganizationMember> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     if (!memberData.organizationId || !memberData.userId) {
       throw new Error("Organization ID and User ID are required");
     }
@@ -982,6 +1057,10 @@ class DatabaseStorage {
   }
 
   async removeOrganizationMember(id: number): Promise<boolean> {
+    if (!db) {
+      throw new Error("Database not available");
+    }
+    
     const result = await db.delete(organizationMembers).where(eq(organizationMembers.id, id));
     return result.rowCount > 0;
   }
